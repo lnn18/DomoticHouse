@@ -6,9 +6,13 @@
 // Configura el pin del buzzer (llamar una vez en setup()).
 void inicializarAlerta(uint8_t pinBuzzer);
 
-// Enciende o apaga el tono de alarma segun el estado de deteccion.
-// Solo dispara tone()/noTone() en los cambios de estado (flanco, es decir cuando "activa"
-// pasa de true a false o viceversa), no en cada llamada, para no reiniciar el sonido sin necesidad.
-void actualizarAlerta(uint8_t pinBuzzer, bool activa);
+// Pone el buzzer a sonar a "frecuenciaHz" (0 = silencio).
+// Solo reinicia el tono cuando la frecuencia pedida cambia respecto a la anterior,
+// para no cortar el sonido innecesariamente en cada vuelta del loop.
+//
+// El buzzer es un unico recurso compartido: quien decide que frecuencia pedir en
+// cada momento (y con que prioridad entre distintas alarmas) es responsabilidad
+// de quien llama a esta funcion (ver main.cpp), no de este modulo.
+void actualizarBuzzer(uint8_t pinBuzzer, unsigned int frecuenciaHz);
 
 #endif

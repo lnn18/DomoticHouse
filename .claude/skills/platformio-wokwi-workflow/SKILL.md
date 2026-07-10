@@ -39,6 +39,14 @@ Mapeo actual (`include/config.h` ↔ `diagram.json`):
 | 74HC595 SHCP (clock) | 11 | `PIN_CLOCK_REGISTRO` |
 | 74HC595 STCP (latch) | 12 | `PIN_LATCH_REGISTRO` |
 | 74HC595 DS (data) | 13 | `PIN_DATOS_REGISTRO` |
+| PIR pasillo OUT | 2 | `PIN_PIR_PASILLO` |
+| Luz de pasillo | 6 | `PIN_LUZ_PASILLO` |
+| Sensor de presión de cama (SIG) | A0 | `PIN_FSR_CAMA` |
+| Luz de alarma de cama | 5 | `PIN_LUZ_ALARMA_CAMA` |
+
+El sensor de presión de la cama se simula en Wokwi con un `wokwi-potentiometer` (no existe una pieza FSR nativa en el catálogo de Wokwi); en hardware real se reemplazaría por un FSR con resistencia pull-down en el mismo pin analógico.
+
+`PIN_LUZ_PASILLO` usa D6 y no D3 a propósito: D2/D3 son los únicos pines de interrupción externa (INT0/INT1), y D3 se deja libre para el futuro botón de pánico del roadmap.
 
 Las constantes de pines viven ahora en `include/config.h`, no directamente en `main.cpp`.
 

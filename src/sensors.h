@@ -15,4 +15,17 @@ void inicializarSensor(uint8_t pinTrig, uint8_t pinEcho);
 // Devuelve -1 si el eco no llego dentro de TIMEOUT_PULSO_US (sin objeto en rango o error de lectura).
 long medirDistanciaCm(uint8_t pinTrig, uint8_t pinEcho);
 
+// Configura el pin del sensor PIR (llamar una vez en setup()).
+void inicializarSensorPir(uint8_t pinPir);
+
+// Indica si hay movimiento estable frente al PIR (con anti-rebote interno).
+bool detectaMovimiento(uint8_t pinPir);
+
+// Configura el pin del sensor de presion de la cama (llamar una vez en setup()).
+void inicializarSensorPresionCama(uint8_t pinFsr);
+
+// Indica si hay presion estable sobre la cama, es decir, si la persona esta acostada
+// (con anti-rebote interno para no reaccionar a ruido momentaneo de la lectura).
+bool hayPersonaEnCama(uint8_t pinFsr, int umbralAdc);
+
 #endif

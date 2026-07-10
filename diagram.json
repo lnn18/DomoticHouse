@@ -46,6 +46,34 @@
       "attrs": {
         "color": "green"
       }
+    },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pirPasillo",
+      "top": -60,
+      "left": 780,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "luzPasillo",
+      "top": 200,
+      "left": 780,
+      "attrs": { "color": "yellow" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "sensorPresionCama",
+      "top": 320,
+      "left": 780,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "luzAlarmaCama",
+      "top": 440,
+      "left": 780,
+      "attrs": { "color": "red" }
     }
   ],
   "connections": [
@@ -79,6 +107,20 @@
     [ "shiftreg:Q6", "ledbar:A7", "green", [ "h0" ] ],
     [ "shiftreg:Q7", "ledbar:A8", "green", [ "h0" ] ],
 
-    [ "ledbar:C1", "uno:GND.4", "black", [ "v0" ] ]
+    [ "ledbar:C1", "uno:GND.4", "black", [ "v0" ] ],
+
+    [ "pirPasillo:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "pirPasillo:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "pirPasillo:OUT", "uno:2", "green", [ "v0" ] ],
+
+    [ "luzPasillo:A", "uno:6", "orange", [ "v0" ] ],
+    [ "luzPasillo:C", "uno:GND.1", "black", [ "v0" ] ],
+
+    [ "sensorPresionCama:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "sensorPresionCama:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "sensorPresionCama:SIG", "uno:A0", "blue", [ "v0" ] ],
+
+    [ "luzAlarmaCama:A", "uno:5", "orange", [ "v0" ] ],
+    [ "luzAlarmaCama:C", "uno:GND.1", "black", [ "v0" ] ]
   ]
 }

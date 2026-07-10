@@ -40,4 +40,32 @@ constexpr unsigned long TIMEOUT_PULSO_US = 30000UL;
 // y deja "aire" al procesador para otras tareas.
 constexpr unsigned long INTERVALO_LECTURA_MS = 100UL;
 
+// --- Sensor PIR de movimiento (luz del pasillo) ---
+// PIN_LUZ_PASILLO NO usa D3 a proposito: D2 y D3 son los unicos pines de interrupcion
+// externa (INT0/INT1) del Uno, y el roadmap los reserva para el boton de panico
+// (ver "Seguridad/Emergencias" en CLAUDE.md). Una luz es una simple salida y no
+// necesita ser un pin de interrupcion, asi que se deja libre D3 para el futuro boton.
+constexpr uint8_t PIN_PIR_PASILLO = 2;   // Salida digital del PIR (HIGH = detecto movimiento)
+constexpr uint8_t PIN_LUZ_PASILLO = 6;   // Controla la luz del pasillo (LED/rele)
+constexpr unsigned long DEBOUNCE_PIR_MS = 50UL; // Anti-rebote, igual que un boton
+constexpr unsigned long DURACION_LUZ_PASILLO_MS = 15000UL; // Tiempo que la luz queda encendida tras el ultimo movimiento
+
+// --- Sensor de presion en la cama (FSR) ---
+// LIMITACION CONOCIDA: si el FSR se desconecta fisicamente, analogRead() puede caer
+// por debajo de UMBRAL_PRESION_CAMA_ADC igual que "cama vacia", y el sistema lo
+// interpretaria (en silencio) como que la persona se levanto. Distinguir "sensor
+// desconectado" de "sin presion" con un solo FSR requiere un circuito adicional
+// (ver iot-elder-care-safety); queda documentado como riesgo pendiente, no resuelto
+// en firmware.
+constexpr uint8_t PIN_FSR_CAMA = A0;         // Lectura analogica de presion
+constexpr uint8_t PIN_LUZ_ALARMA_CAMA = 5;   // Luz de alarma si se demora en levantarse
+constexpr int UMBRAL_PRESION_CAMA_ADC = 300; // Lectura (0-1023) a partir de la cual se considera "en cama"
+constexpr unsigned long DEBOUNCE_PRESION_CAMA_MS = 2000UL; // Filtra ruido momentaneo de la lectura analogica
+constexpr unsigned long TOLERANCIA_AUSENCIA_CAMA_MS = 60000UL; // Una ausencia mas corta que esto (ej. un giro en la cama) no cuenta como "se levanto": no reinicia el conteo de 7 horas
+constexpr unsigned long TIEMPO_MAX_EN_CAMA_MS = 7UL * 60UL * 60UL * 1000UL; // 7 horas seguidas en cama -> alarma
+
+// --- Frecuencias del buzzer, distintas por tipo de alarma para diferenciarlas de oido ---
+constexpr unsigned int FRECUENCIA_ALARMA_PROXIMIDAD_HZ = 2000;
+constexpr unsigned int FRECUENCIA_ALARMA_CAMA_HZ = 800;
+
 #endif

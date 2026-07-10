@@ -8,7 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Sistema domótico de asistencia para personas mayores implementado sobre Arduino Uno.
 Desarrollado en VS Code con PlatformIO. Simulación en Wokwi.
 
-Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `sensors`/`alerts`/`display`) usa 2 sensores ultrasónicos HC-SR04. Cuando cualquiera de los dos detecta un objeto a ≤20cm, enciende 2 LEDs (vía registro de desplazamiento 74HC595, usando solo Q0/Q1) y hace sonar un buzzer de alarma.
+Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `sensors`/`alerts`/`display`/`lighting`) implementa:
+- **Proximidad**: 2 sensores ultrasónicos HC-SR04. Cuando cualquiera detecta un objeto a ≤20cm, enciende 2 LEDs (vía registro de desplazamiento 74HC595, usando solo Q0/Q1) y suena el buzzer.
+- **Luz de pasillo**: un sensor PIR enciende una luz al detectar movimiento y la apaga sola tras 15s sin movimiento.
+- **Alarma de cama**: un sensor de presión detecta si la persona lleva más de 7 horas seguidas acostada; si es así, enciende una luz de alarma y suena el buzzer con un tono distinto al de proximidad.
+
+El buzzer es un recurso compartido entre la alarma de proximidad y la de cama; `main.cpp` arbitra la prioridad (cama > proximidad) antes de pedir una única frecuencia a `actualizarBuzzer()`.
 
 ## Stack Técnico
 - **MCU**: Arduino Uno (ATmega328P, 32KB Flash, 2KB SRAM)
@@ -34,11 +39,13 @@ El proyecto se simula en Wokwi (extensión de VS Code o wokwi.com):
 
 - [wokwi.toml](wokwi.toml) apunta al binario compilado (`.pio/build/uno/firmware.hex` / `.elf`), así que hay que ejecutar `pio run` antes de iniciar la simulación.
 - [diagram.json](diagram.json) define el circuito simulado y el cableado. Los pines asignados en el código deben mantenerse sincronizados con las conexiones declaradas ahí:
-  - Buzzer → pin 4
+  - Buzzer → pin 4 (compartido entre alarma de proximidad y alarma de cama)
   - HC-SR04 sensor 1: TRIG → pin 9, ECHO → pin 10
   - HC-SR04 sensor 2: TRIG → pin 7, ECHO → pin 8
   - 74HC595 SHCP (clock) → pin 11, STCP (latch) → pin 12, DS (data) → pin 13
   - Salidas Q0–Q7 del registro → barra de LEDs (solo Q0/Q1 se usan; el resto quedan siempre apagadas)
+  - PIR pasillo: OUT → pin 2; luz de pasillo → pin 6 (D3 se deja libre a propósito para el futuro botón de pánico, ver Restricciones de Hardware)
+  - Sensor de presión de cama: SIG → pin A0 (simulado con potenciómetro en Wokwi, ya que no hay pieza FSR nativa); luz de alarma de cama → pin 5
 
 Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 
@@ -46,6 +53,7 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - Solo 6 pines analógicos (A0–A5)
 - Solo 14 pines digitales (2–13 usables; 0/1 reservados para Serial)
 - Pines PWM: 3, 5, 6, 9, 10, 11
+- **D2 y D3 son los únicos pines de interrupción externa (INT0/INT1)**. D2 ya está en uso (PIR del pasillo, por sondeo, no por interrupción). Mantener D3 libre: está reservado para el botón de pánico (roadmap "Seguridad/Emergencias"), que debe usar `attachInterrupt` para minimizar latencia.
 - Sin WiFi nativo — usar módulo ESP8266 (AT commands vía SoftwareSerial) o HC-05 Bluetooth
 - Sin RTOS — código secuencial, evitar delay(), usar millis()
 - SRAM limitada: evitar String, preferir char[], F() macro para literales
@@ -59,15 +67,16 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 ### Seguridad / Emergencias
 - [ ] Botón de pánico (interrupción INT0/INT1)
 - [ ] Detector de caída (MPU6050 vía I2C)
-- [ ] Alarma sonora (buzzer pasivo)
+- [x] Alarma sonora (buzzer pasivo) — implementada para proximidad y para inmovilidad en cama
+- [x] Alarma de inmovilidad prolongada en cama (sensor de presión, luz + buzzer si pasan 7h seguidas acostado) — no estaba en el roadmap original, se agregó a pedido
 
 ### Monitoreo Ambiental
 - [ ] Temperatura y humedad (DHT11 o DHT22)
 - [ ] Detector de gas/humo (MQ-2)
-- [ ] Sensor de movimiento PIR (presencia en habitaciones)
+- [x] Sensor de movimiento PIR (presencia en habitaciones) — implementado para el pasillo
 
 ### Confort / Accesibilidad
-- [ ] Control de iluminación (relay + dimmer PWM)
+- [x] Control de iluminación — on/off simple con PIR (pasillo) y con la alarma de cama; falta el dimmer PWM
 - [ ] Display LCD 16x2 I2C con info de estado
 - [ ] Alarmas de medicamentos (RTC DS3231 + buzzer)
 
@@ -83,11 +92,12 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - Constantes de pines en `config.h`
 
 ## Estructura de Archivos
-- [src/main.cpp](src/main.cpp) — punto de entrada; orquesta los módulos con un temporizador `millis()` no bloqueante
-- [src/sensors.h](src/sensors.h) / [src/sensors.cpp](src/sensors.cpp) — lectura de los 2 HC-SR04
-- [src/alerts.h](src/alerts.h) / [src/alerts.cpp](src/alerts.cpp) — control del buzzer de alarma
-- [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control de los LEDs vía 74HC595
-- [include/config.h](include/config.h) — constantes de pines y parámetros (umbral de detección, timeouts)
+- [src/main.cpp](src/main.cpp) — punto de entrada; orquesta los módulos con temporizadores `millis()` no bloqueantes y arbitra la prioridad del buzzer compartido
+- [src/sensors.h](src/sensors.h) / [src/sensors.cpp](src/sensors.cpp) — lectura de los 2 HC-SR04, el PIR y el sensor de presión de cama (con anti-rebote)
+- [src/alerts.h](src/alerts.h) / [src/alerts.cpp](src/alerts.cpp) — control del buzzer compartido (`actualizarBuzzer(pin, frecuenciaHz)`)
+- [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control de los LEDs de proximidad vía 74HC595
+- [src/lighting.h](src/lighting.h) / [src/lighting.cpp](src/lighting.cpp) — encender/apagar la luz de pasillo y la luz de alarma de cama
+- [include/config.h](include/config.h) — constantes de pines y parámetros (umbrales, timeouts, tiempos de debounce)
 - [platformio.ini](platformio.ini) — único entorno `uno` (plataforma atmelavr, framework Arduino)
 - [diagram.json](diagram.json) — circuito de Wokwi
 - [wokwi.toml](wokwi.toml) — configuración del simulador
