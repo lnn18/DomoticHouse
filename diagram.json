@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "author": "Lina",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 120,
+      "left": 40,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic",
+      "top": -60,
+      "left": 420,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 320,
+      "left": 430,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-74hc595",
+      "id": "shiftreg",
+      "top": 120,
+      "left": 430,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led-bar-graph",
+      "id": "ledbar",
+      "top": 80,
+      "left": 700,
+      "attrs": {
+        "color": "green"
+      }
+    }
+  ],
+  "connections": [
+
+    [ "ultrasonic:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "ultrasonic:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonic:TRIG", "uno:9", "green", [ "v0" ] ],
+    [ "ultrasonic:ECHO", "uno:10", "blue", [ "v0" ] ],
+
+    [ "buzzer:1", "uno:4", "orange", [ "v0" ] ],
+    [ "buzzer:2", "uno:GND.2", "black", [ "v0" ] ],
+
+    [ "shiftreg:VCC", "uno:5V", "red", [ "h0" ] ],
+    [ "shiftreg:GND", "uno:GND.3", "black", [ "h0" ] ],
+
+    [ "shiftreg:DS", "uno:13", "purple", [ "h0" ] ],
+    [ "shiftreg:SHCP", "uno:11", "yellow", [ "h0" ] ],
+    [ "shiftreg:STCP", "uno:12", "cyan", [ "h0" ] ],
+
+    [ "shiftreg:Q0", "ledbar:A1", "green", [ "h0" ] ],
+    [ "shiftreg:Q1", "ledbar:A2", "green", [ "h0" ] ],
+    [ "shiftreg:Q2", "ledbar:A3", "green", [ "h0" ] ],
+    [ "shiftreg:Q3", "ledbar:A4", "green", [ "h0" ] ],
+    [ "shiftreg:Q4", "ledbar:A5", "green", [ "h0" ] ],
+    [ "shiftreg:Q5", "ledbar:A6", "green", [ "h0" ] ],
+    [ "shiftreg:Q6", "ledbar:A7", "green", [ "h0" ] ],
+    [ "shiftreg:Q7", "ledbar:A8", "green", [ "h0" ] ],
+
+    [ "ledbar:C1", "uno:GND.4", "black", [ "v0" ] ]
+  ]
+}

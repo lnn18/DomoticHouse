@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Documentación en vivo de librerías Arduino/PlatformIO (DHT, MPU6050, RTC DS3231, ESP8266, etc.) — usar con resolve-library-id / query-docs antes de agregar una librería nueva a platformio.ini"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "TU_TOKEN_DE_GITHUB_AQUI"
+      },
+      "description": "Opcional — operaciones de GitHub (issues, PRs) cuando el repo del proyecto se suba a un remoto. No requerido para trabajar localmente."
+    }
+  },
+  "_comments": {
+    "uso": "Copiar el/los servidor(es) que necesites a la sección mcpServers de tu ~/.claude.json",
+    "env_vars": "Reemplazar TU_TOKEN_DE_GITHUB_AQUI por un token real si vas a usar el servidor github",
+    "alcance": "Set intencionalmente mínimo: este es un proyecto de hardware embebido de un solo desarrollador, no hace falta el catálogo SaaS completo (Jira, Vercel, Cloudflare, etc.)",
+    "contexto": "Mantener menos de 10 MCPs habilitados para no consumir la ventana de contexto innecesariamente"
+  }
+}

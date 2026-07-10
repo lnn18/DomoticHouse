@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pio run:*)",
+      "Bash(pio run --target upload:*)",
+      "Bash(pio run --target clean:*)",
+      "Bash(pio device monitor:*)",
+      "Bash(pio check:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/pin-consistency-check.js"
+          }
+        ],
+        "description": "Advierte si un archivo .cpp/.h editado desincroniza los pines respecto a diagram.json (solo advertencia)",
+        "id": "post:pin-consistency-check"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/no-delay-guard.js"
+          }
+        ],
+        "description": "Advierte si se introduce delay() fuera de setup() (solo advertencia)",
+        "id": "post:no-delay-guard"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/pio-build-reminder.js"
+          }
+        ],
+        "description": "Recuerda ejecutar pio run si se editó firmware/config sin recompilar (solo advertencia)",
+        "id": "stop:pio-build-reminder"
+      }
+    ]
+  }
+}
