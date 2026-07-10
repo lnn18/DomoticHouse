@@ -22,7 +22,7 @@ constexpr uint8_t PIN_TRIG_2 = 7;
 constexpr uint8_t PIN_ECHO_2 = 8;
 
 // Registro de desplazamiento 74HC595 (controla la barra de LEDs usando solo 3 pines)
-// Solo se usan Q0 y Q1 (2 LEDs); el resto de salidas quedan siempre apagadas.
+// Se usan Q0/Q1 (proximidad) y Q2 (boton de panico); el resto de salidas quedan siempre apagadas.
 constexpr uint8_t PIN_CLOCK_REGISTRO = 11; // Sincroniza el envio de cada bit (SHCP)
 constexpr uint8_t PIN_LATCH_REGISTRO = 12; // Ordena "mostrar" los bits ya recibidos (STCP)
 constexpr uint8_t PIN_DATOS_REGISTRO = 13; // Por aqui se envian los bits, uno por uno (DS)
@@ -64,7 +64,24 @@ constexpr unsigned long DEBOUNCE_PRESION_CAMA_MS = 2000UL; // Filtra ruido momen
 constexpr unsigned long TOLERANCIA_AUSENCIA_CAMA_MS = 60000UL; // Una ausencia mas corta que esto (ej. un giro en la cama) no cuenta como "se levanto": no reinicia el conteo de 7 horas
 constexpr unsigned long TIEMPO_MAX_EN_CAMA_MS = 7UL * 60UL * 60UL * 1000UL; // 7 horas seguidas en cama -> alarma
 
+// --- Boton de panico ---
+// Usa D3 (INT1), el pin de interrupcion que se dejo libre a proposito (ver PIN_LUZ_PASILLO
+// mas arriba). Es la alarma de mayor prioridad: silencia cualquier otra alarma en el buzzer
+// compartido. El boton funciona como interruptor (toggle): un pulso activa la alarma, el
+// siguiente la desactiva; asi no depende de que otro componente la apague.
+//
+// LIMITACION CONOCIDA (igual espiritu que PIN_FSR_CAMA): con INPUT_PULLUP, un cable cortado
+// o el boton desconectado se lee igual que "nunca presionado" (el pin queda en HIGH de forma
+// estable). No hay forma de distinguir en firmware "boton sano, sin presionar" de "boton
+// desconectado" sin hardware adicional (ej. resistencia de deteccion de continuidad, o un
+// diseno normalmente cerrado). Riesgo pendiente, no resuelto aqui.
+constexpr uint8_t PIN_BOTON_PANICO = 3;
+constexpr unsigned long DEBOUNCE_BOTON_PANICO_MS = 50UL;
+
 // --- Frecuencias del buzzer, distintas por tipo de alarma para diferenciarlas de oido ---
+// FRECUENCIA_ALARMA_PANICO_HZ es la mas alta y aguda a proposito: debe ser la mas
+// facil de reconocer, ya que indica la emergencia de mayor prioridad.
+constexpr unsigned int FRECUENCIA_ALARMA_PANICO_HZ = 3000;
 constexpr unsigned int FRECUENCIA_ALARMA_PROXIMIDAD_HZ = 2000;
 constexpr unsigned int FRECUENCIA_ALARMA_CAMA_HZ = 800;
 

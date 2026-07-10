@@ -43,10 +43,11 @@ Mapeo actual (`include/config.h` ↔ `diagram.json`):
 | Luz de pasillo | 6 | `PIN_LUZ_PASILLO` |
 | Sensor de presión de cama (SIG) | A0 | `PIN_FSR_CAMA` |
 | Luz de alarma de cama | 5 | `PIN_LUZ_ALARMA_CAMA` |
+| Botón de pánico | 3 (INT1) | `PIN_BOTON_PANICO` |
 
 El sensor de presión de la cama se simula en Wokwi con un `wokwi-potentiometer` (no existe una pieza FSR nativa en el catálogo de Wokwi); en hardware real se reemplazaría por un FSR con resistencia pull-down en el mismo pin analógico.
 
-`PIN_LUZ_PASILLO` usa D6 y no D3 a propósito: D2/D3 son los únicos pines de interrupción externa (INT0/INT1), y D3 se deja libre para el futuro botón de pánico del roadmap.
+`PIN_LUZ_PASILLO` usa D6 y no D3 a propósito: D2/D3 son los únicos pines de interrupción externa (INT0/INT1). D3 quedó reservado para el botón de pánico (`attachInterrupt(..., FALLING)` con `INPUT_PULLUP`, sin resistencia externa). La luz de pánico no usa un pin nuevo del Uno: reutiliza Q2 del 74HC595, que ya estaba cableado a `ledbar` pero sin usar en el firmware.
 
 Las constantes de pines viven ahora en `include/config.h`, no directamente en `main.cpp`.
 

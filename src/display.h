@@ -12,7 +12,10 @@
 // Configura los pines del registro de desplazamiento 74HC595 (llamar una vez en setup()).
 void inicializarDisplay(uint8_t pinClock, uint8_t pinLatch, uint8_t pinDatos);
 
-// Enciende (o apaga) los 2 LEDs de deteccion (Q0 y Q1 del registro).
-void actualizarLeds(uint8_t pinClock, uint8_t pinLatch, uint8_t pinDatos, bool encender);
+// Actualiza las salidas del registro con el estado de cada luz que controla:
+// Q0/Q1 para la deteccion de proximidad, Q2 para la alarma de panico.
+// Se llama una sola vez por vuelta de loop() (el shiftOut() manda los 8 bits juntos,
+// asi que hace falta conocer el estado de todas las luces antes de enviarlo).
+void actualizarLeds(uint8_t pinClock, uint8_t pinLatch, uint8_t pinDatos, bool proximidadActiva, bool panicoActivo);
 
 #endif

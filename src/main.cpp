@@ -1,8 +1,8 @@
 #include <Arduino.h>   // Libreria base de Arduino: pinMode, digitalWrite, millis(), Serial, etc.
 #include "config.h"    // Pines y constantes del proyecto (todo centralizado aqui)
 #include "sensors.h"   // Funciones para leer los sensores (HC-SR04, PIR, presion de cama)
-#include "alerts.h"    // Funcion para controlar el buzzer compartido
-#include "display.h"   // Funciones para controlar los LEDs de proximidad (74HC595)
+#include "alerts.h"    // Funciones para el buzzer compartido y el boton de panico
+#include "display.h"   // Funciones para controlar los LEDs (74HC595): proximidad y panico
 #include "lighting.h"  // Funciones para controlar la luz del pasillo y la luz de alarma de cama
 
 // Guarda en que momento (milisegundos desde que arranco el Arduino) se leyeron
@@ -25,6 +25,9 @@ unsigned long INICIO_EN_CAMA_MILLIS = 0;
 bool HUBO_AUSENCIA_CAMA = false;
 unsigned long INICIO_AUSENCIA_CAMA_MILLIS = 0;
 bool ALARMA_CAMA_ACTIVA = false;
+
+// Boton de panico: es la alarma de mayor prioridad de todo el sistema.
+bool ALARMA_PANICO_ACTIVA = false;
 
 // setup() se ejecuta una sola vez, apenas el Arduino arranca o se reinicia.
 // Aqui se prepara todo lo necesario antes de empezar a repetir loop().
@@ -49,9 +52,11 @@ void setup() {
 
   inicializarSensorPresionCama(PIN_FSR_CAMA);
   inicializarLuz(PIN_LUZ_ALARMA_CAMA);
+
+  inicializarBotonPanico(PIN_BOTON_PANICO);
 }
 
-// Lee los 2 HC-SR04 y actualiza los LEDs de proximidad. Se llama cada INTERVALO_LECTURA_MS.
+// Lee los 2 HC-SR04 y actualiza ALERTA_ACTIVA. Se llama cada INTERVALO_LECTURA_MS.
 void actualizarProximidad(unsigned long ahora) {
   if (ahora - ULTIMA_LECTURA_MILLIS < INTERVALO_LECTURA_MS) {
     return;
@@ -65,7 +70,6 @@ void actualizarProximidad(unsigned long ahora) {
   bool deteccion2 = (distancia2 >= 0) && (distancia2 <= UMBRAL_DETECCION_CM);
 
   ALERTA_ACTIVA = deteccion1 || deteccion2;
-  actualizarLeds(PIN_CLOCK_REGISTRO, PIN_LATCH_REGISTRO, PIN_DATOS_REGISTRO, ALERTA_ACTIVA);
 }
 
 // Enciende la luz del pasillo con movimiento y la apaga sola tras DURACION_LUZ_PASILLO_MS sin detectar nada.
@@ -117,11 +121,19 @@ void actualizarAlarmaCama(unsigned long ahora) {
   }
 }
 
-// El buzzer es un unico recurso compartido: la alarma de cama tiene prioridad sobre
-// el aviso de proximidad, asi que aqui se decide una sola frecuencia por vuelta de loop().
+// El registro 74HC595 es un unico recurso compartido (Q0/Q1 proximidad, Q2 panico):
+// shiftOut() manda los 8 bits juntos, asi que se actualiza una sola vez por vuelta de loop().
+void actualizarLedsCompartidos() {
+  actualizarLeds(PIN_CLOCK_REGISTRO, PIN_LATCH_REGISTRO, PIN_DATOS_REGISTRO, ALERTA_ACTIVA, ALARMA_PANICO_ACTIVA);
+}
+
+// El buzzer tambien es un unico recurso compartido: panico > cama > proximidad.
+// Se decide una sola frecuencia por vuelta de loop() antes de pedirla.
 void actualizarBuzzerCompartido() {
   unsigned int frecuenciaBuzzer = 0;
-  if (ALARMA_CAMA_ACTIVA) {
+  if (ALARMA_PANICO_ACTIVA) {
+    frecuenciaBuzzer = FRECUENCIA_ALARMA_PANICO_HZ;
+  } else if (ALARMA_CAMA_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_CAMA_HZ;
   } else if (ALERTA_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_PROXIMIDAD_HZ;
@@ -131,11 +143,19 @@ void actualizarBuzzerCompartido() {
 
 // loop() se ejecuta una y otra vez, sin parar, mientras el Arduino este encendido.
 // Se mantiene corto a proposito: cada tarea vive en su propia funcion arriba.
+//
+// El boton de panico se procesa PRIMERO, antes de actualizarProximidad(): esta ultima
+// puede bloquear brevemente (hasta ~60ms, ver TIMEOUT_PULSO_US en config.h) esperando
+// el eco de los HC-SR04, y la alarma de mayor prioridad del sistema no debe esperar a
+// que esa lectura termine para reflejarse en el buzzer y el LED.
 void loop() {
   unsigned long ahora = millis(); // Milisegundos transcurridos desde que arranco el Arduino
 
+  ALARMA_PANICO_ACTIVA = actualizarAlarmaPanico();
   actualizarProximidad(ahora);
   actualizarLuzPasillo(ahora);
   actualizarAlarmaCama(ahora);
+
+  actualizarLedsCompartidos();
   actualizarBuzzerCompartido();
 }

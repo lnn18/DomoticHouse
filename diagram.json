@@ -74,6 +74,13 @@
       "top": 440,
       "left": 780,
       "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "botonPanico",
+      "top": 560,
+      "left": 780,
+      "attrs": { "color": "red" }
     }
   ],
   "connections": [
@@ -121,6 +128,9 @@
     [ "sensorPresionCama:SIG", "uno:A0", "blue", [ "v0" ] ],
 
     [ "luzAlarmaCama:A", "uno:5", "orange", [ "v0" ] ],
-    [ "luzAlarmaCama:C", "uno:GND.1", "black", [ "v0" ] ]
+    [ "luzAlarmaCama:C", "uno:GND.1", "black", [ "v0" ] ],
+
+    [ "botonPanico:1.l", "uno:3", "green", [ "v0" ] ],
+    [ "botonPanico:2.l", "uno:GND.1", "black", [ "v0" ] ]
   ]
 }
