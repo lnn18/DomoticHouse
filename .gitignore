@@ -3,3 +3,13 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Configuración local de Claude Code (agentes, skills, hooks, settings) — no se sube al repo
+.claude/
+
+# Credenciales locales (WiFi/MQTT/Bluetooth) — ver rules/security-iot.md
+**/config_local.h
+
+# Archivos de sistema
+Thumbs.db
+.DS_Store

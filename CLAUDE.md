@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Sistema domótico de asistencia para personas mayores implementado sobre Arduino Uno.
 Desarrollado en VS Code con PlatformIO. Simulación en Wokwi.
 
-Estado actual: el firmware ([src/main.cpp](src/main.cpp)) implementa un sensor ultrasónico HC-SR04 que muestra proximidad en una barra de LEDs (vía registro de desplazamiento 74HC595) y hace sonar un buzzer a distintas frecuencias según la distancia.
+Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `sensors`/`alerts`/`display`) usa 2 sensores ultrasónicos HC-SR04. Cuando cualquiera de los dos detecta un objeto a ≤20cm, enciende 2 LEDs (vía registro de desplazamiento 74HC595, usando solo Q0/Q1) y hace sonar un buzzer de alarma.
 
 ## Stack Técnico
 - **MCU**: Arduino Uno (ATmega328P, 32KB Flash, 2KB SRAM)
@@ -35,9 +35,10 @@ El proyecto se simula en Wokwi (extensión de VS Code o wokwi.com):
 - [wokwi.toml](wokwi.toml) apunta al binario compilado (`.pio/build/uno/firmware.hex` / `.elf`), así que hay que ejecutar `pio run` antes de iniciar la simulación.
 - [diagram.json](diagram.json) define el circuito simulado y el cableado. Los pines asignados en el código deben mantenerse sincronizados con las conexiones declaradas ahí:
   - Buzzer → pin 4
-  - HC-SR04 TRIG → pin 9, ECHO → pin 10
+  - HC-SR04 sensor 1: TRIG → pin 9, ECHO → pin 10
+  - HC-SR04 sensor 2: TRIG → pin 7, ECHO → pin 8
   - 74HC595 SHCP (clock) → pin 11, STCP (latch) → pin 12, DS (data) → pin 13
-  - Salidas Q0–Q7 del registro → barra de LEDs
+  - Salidas Q0–Q7 del registro → barra de LEDs (solo Q0/Q1 se usan; el resto quedan siempre apagadas)
 
 Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 
@@ -82,11 +83,15 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - Constantes de pines en `config.h`
 
 ## Estructura de Archivos
-- [src/main.cpp](src/main.cpp) — punto de entrada; hoy contiene toda la lógica (se modularizará en .h/.cpp por funcionalidad)
+- [src/main.cpp](src/main.cpp) — punto de entrada; orquesta los módulos con un temporizador `millis()` no bloqueante
+- [src/sensors.h](src/sensors.h) / [src/sensors.cpp](src/sensors.cpp) — lectura de los 2 HC-SR04
+- [src/alerts.h](src/alerts.h) / [src/alerts.cpp](src/alerts.cpp) — control del buzzer de alarma
+- [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control de los LEDs vía 74HC595
+- [include/config.h](include/config.h) — constantes de pines y parámetros (umbral de detección, timeouts)
 - [platformio.ini](platformio.ini) — único entorno `uno` (plataforma atmelavr, framework Arduino)
 - [diagram.json](diagram.json) — circuito de Wokwi
 - [wokwi.toml](wokwi.toml) — configuración del simulador
-- `include/`, `lib/` — headers y librerías propias (vacíos por ahora)
+- `lib/` — librerías propias (vacío por ahora)
 - `.pio/` — salida de compilación generada; nunca editarla
 
 ## Herramientas de Claude Code

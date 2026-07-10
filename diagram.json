@@ -18,6 +18,13 @@
       "attrs": {}
     },
     {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic2",
+      "top": -60,
+      "left": 600,
+      "attrs": {}
+    },
+    {
       "type": "wokwi-buzzer",
       "id": "buzzer",
       "top": 320,
@@ -47,6 +54,11 @@
     [ "ultrasonic:GND", "uno:GND.1", "black", [ "v0" ] ],
     [ "ultrasonic:TRIG", "uno:9", "green", [ "v0" ] ],
     [ "ultrasonic:ECHO", "uno:10", "blue", [ "v0" ] ],
+
+    [ "ultrasonic2:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "ultrasonic2:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonic2:TRIG", "uno:7", "green", [ "v0" ] ],
+    [ "ultrasonic2:ECHO", "uno:8", "blue", [ "v0" ] ],
 
     [ "buzzer:1", "uno:4", "orange", [ "v0" ] ],
     [ "buzzer:2", "uno:GND.2", "black", [ "v0" ] ],

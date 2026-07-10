@@ -27,16 +27,20 @@ pio run --target clean       # limpiar build
 
 ### Regla de sincronía de pines
 
-Mapeo actual (`src/main.cpp` ↔ `diagram.json`):
+Mapeo actual (`include/config.h` ↔ `diagram.json`):
 
 | Componente | Pin | Constante en código |
 |---|---|---|
-| Buzzer | 4 | `tonePin` |
-| HC-SR04 TRIG | 9 | `trigPin` |
-| HC-SR04 ECHO | 10 | `echoPin` |
-| 74HC595 SHCP (clock) | 11 | `clockPin` |
-| 74HC595 STCP (latch) | 12 | `latchPin` |
-| 74HC595 DS (data) | 13 | `dataPin` |
+| Buzzer | 4 | `PIN_BUZZER` |
+| HC-SR04 sensor 1 TRIG | 9 | `PIN_TRIG_1` |
+| HC-SR04 sensor 1 ECHO | 10 | `PIN_ECHO_1` |
+| HC-SR04 sensor 2 TRIG | 7 | `PIN_TRIG_2` |
+| HC-SR04 sensor 2 ECHO | 8 | `PIN_ECHO_2` |
+| 74HC595 SHCP (clock) | 11 | `PIN_CLOCK_REGISTRO` |
+| 74HC595 STCP (latch) | 12 | `PIN_LATCH_REGISTRO` |
+| 74HC595 DS (data) | 13 | `PIN_DATOS_REGISTRO` |
+
+Las constantes de pines viven ahora en `include/config.h`, no directamente en `main.cpp`.
 
 Si se cambia un pin en el código, **actualizar `diagram.json`** (y viceversa). Usar el comando `/pin-check` o el hook `pin-consistency-check.js` para detectar discrepancias automáticamente — son advertencias, no bloqueos, así que revisarlas manualmente antes de simular.
 
