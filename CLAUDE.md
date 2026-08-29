@@ -8,13 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Sistema domótico de asistencia para personas mayores implementado sobre Arduino Uno.
 Desarrollado en VS Code con PlatformIO. Simulación en Wokwi.
 
-Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `sensors`/`alerts`/`display`/`lighting`) implementa:
-- **Proximidad**: 2 sensores ultrasónicos HC-SR04. Cuando cualquiera detecta un objeto a ≤20cm, enciende 2 LEDs (vía registro de desplazamiento 74HC595, usando Q0/Q1) y suena el buzzer.
-- **Luz de pasillo**: un sensor PIR enciende una luz al detectar movimiento y la apaga sola tras 15s sin movimiento.
-- **Alarma de cama**: un sensor de presión detecta si la persona lleva más de 7 horas seguidas acostada; si es así, enciende una luz de alarma y suena el buzzer con un tono distinto al de proximidad.
-- **Botón de pánico**: interrupción en D3 (INT1), tipo interruptor (un pulso activa la alarma, el siguiente la desactiva). Es la alarma de mayor prioridad del sistema: silencia cualquier otra en el buzzer compartido y enciende un LED dedicado (Q2 del 74HC595).
+Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `sensors`/`alerts`/`display`/`lighting`/`access`) implementa:
+- **Proximidad**: 2 sensores ultrasónicos SRF-05 (en modo de 4 pines, eléctricamente compatible con HC-SR04; el pin OUT/Mode queda sin conectar). Se leen cada 1s (`INTERVALO_LECTURA_MS`). Cuando cualquiera detecta un objeto a ≤20cm **y además es de noche** (ver fotocelda), suena el buzzer (sin LED propio); de día no reacciona aunque haya algo cerca.
+- **Luz de pasillo**: un 3er sensor SRF-05 (mismo modelo que proximidad, reutilizando una unidad disponible) enciende una luz cuando detecta algo a ≤10cm (`UMBRAL_PASILLO_CM`) y la apaga sola tras 15s sin detectar nada — pero solo **de noche**; de día no enciende aunque haya alguien cerca. A diferencia de un PIR (que usaba antes), este sensor detecta presencia por distancia, no movimiento real: no distingue una persona quieta de un objeto fijo dentro de su rango.
+- **Fotocelda (LDR)**: en A0, decide si "es de noche" (con anti-rebote de 2s) y condiciona tanto la luz de pasillo como la alarma de proximidad. Reutiliza el pin que dejó libre la alarma de cama desactivada.
+- **Alarma de cama**: DESACTIVADA TEMPORALMENTE (comentada en `main.cpp`, `config.h` y `sensors.cpp`, no borrada). Cuando se reactive: un sensor de presión detecta si la persona lleva más de 7 horas seguidas acostada; si es así, enciende una luz de alarma y suena el buzzer con un tono distinto al de proximidad. Nota: al reactivarla habría que mover la fotocelda a otro pin analógico, ya que ambas usan A0.
+- **Botón de pánico**: interrupción en D3 (INT1), tipo interruptor (un pulso activa la alarma, el siguiente la desactiva). Es la alarma de mayor prioridad del sistema: silencia cualquier otra en el buzzer compartido y enciende un LED dedicado en A1 (control directo, ya no vía registro de desplazamiento). No depende de la fotocelda — funciona a cualquier hora.
+- **Control de acceso (puerta)**: un lector RFID RC522 (bus SPI de hardware: D11/D12/D13) detecta cualquier tarjeta/tag (todavía sin validar contra una lista de UIDs autorizados) y abre un servo durante 20s antes de cerrarlo solo, sin bloquear el `loop()`. No depende de la fotocelda — funciona a cualquier hora.
 
-El buzzer y el registro 74HC595 son recursos compartidos entre las distintas alarmas; `main.cpp` arbitra la prioridad (pánico > cama > proximidad) antes de pedir una única frecuencia a `actualizarBuzzer()` / un único patrón de LEDs a `actualizarLeds()`, una vez por vuelta de `loop()`.
+El buzzer es un recurso compartido entre las distintas alarmas; `main.cpp` arbitra la prioridad (pánico > proximidad, ya que la alarma de cama está desactivada) antes de pedir una única frecuencia a `actualizarBuzzer()`, una vez por vuelta de `loop()`. El registro 74HC595 que antes controlaba los LEDs se eliminó por completo: liberaba el bus SPI que ahora necesita el RC522.
 
 ## Stack Técnico
 - **MCU**: Arduino Uno (ATmega328P, 32KB Flash, 2KB SRAM)
@@ -40,14 +42,17 @@ El proyecto se simula en Wokwi (extensión de VS Code o wokwi.com):
 
 - [wokwi.toml](wokwi.toml) apunta al binario compilado (`.pio/build/uno/firmware.hex` / `.elf`), así que hay que ejecutar `pio run` antes de iniciar la simulación.
 - [diagram.json](diagram.json) define el circuito simulado y el cableado. Los pines asignados en el código deben mantenerse sincronizados con las conexiones declaradas ahí:
-  - Buzzer → pin 4 (compartido entre alarma de proximidad y alarma de cama)
-  - HC-SR04 sensor 1: TRIG → pin 9, ECHO → pin 10
-  - HC-SR04 sensor 2: TRIG → pin 7, ECHO → pin 8
-  - 74HC595 SHCP (clock) → pin 11, STCP (latch) → pin 12, DS (data) → pin 13
-  - Salidas Q0–Q7 del registro → barra de LEDs (se usan Q0/Q1 para proximidad y Q2 para pánico; el resto quedan siempre apagadas)
-  - PIR pasillo: OUT → pin 2; luz de pasillo → pin 6
-  - Sensor de presión de cama: SIG → pin A0 (simulado con potenciómetro en Wokwi, ya que no hay pieza FSR nativa); luz de alarma de cama → pin 5
+  - Buzzer → pin 4
+  - Sensor de proximidad 1 (físico: SRF-05, modo 4 pines; simulado en Wokwi con la pieza `wokwi-hc-sr04`, eléctricamente equivalente): TRIG → pin 9, ECHO → pin 10
+  - Sensor de proximidad 2 (mismo caso): TRIG → pin 7, ECHO → pin 8
+  - LED de pánico: control directo (sin registro de desplazamiento) → pin A1
+  - Sensor de pasillo (3er SRF-05, mismo caso que los de proximidad): TRIG → pin 2, ECHO → pin 5; luz de pasillo → pin 6
   - Botón de pánico: pin 3 (INT1), `INPUT_PULLUP` + `attachInterrupt(FALLING)`
+  - Lector RFID RC522 (pieza nativa `board-mfrc522`): VCC → 3.3V (**no 5V**, daña el módulo), GND → GND, MOSI → pin 11, MISO → pin 12, SCK → pin 13 (bus SPI de hardware, fijo), SDA/SS → A4, RST → A5
+  - Servo de la puerta (pieza nativa `wokwi-servo`): señal PWM → A2 (vía `Servo.h`, no requiere pin PWM de hardware), V+ → 5V, GND → GND
+  - Fotocelda: en físico es una LDR de 2 patas (sin polaridad) + una resistencia fija (~10kΩ) armando un divisor de tensión a mano — el nodo entre ambas va a A0, un extremo de la LDR a 5V y un extremo de la resistencia a GND. Wokwi no tiene una pieza de LDR suelta ni simula bien resistencias junto a partes analógicas, así que `diagram.json` la simula con el módulo `wokwi-photoresistor-sensor` (mismo comportamiento eléctrico visto desde AO, pero no es el montaje físico real)
+
+  Desactivado temporalmente (comentado en el código, no borrado del todo — ver `config.h`, `main.cpp`, `sensors.cpp`): sensor de presión de cama (potenciómetro en Wokwi) en A0 (choca con la fotocelda — no puede reactivarse sin mover una de las dos a otro pin), luz de alarma de cama en pin 5. No están en `diagram.json` mientras siguen desactivados.
 
 Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 
@@ -55,7 +60,7 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - Solo 6 pines analógicos (A0–A5)
 - Solo 14 pines digitales (2–13 usables; 0/1 reservados para Serial)
 - Pines PWM: 3, 5, 6, 9, 10, 11
-- **D2 y D3 son los únicos pines de interrupción externa (INT0/INT1)**. D2 está en uso por el PIR del pasillo (por sondeo, no por interrupción). D3 lo usa el botón de pánico, vía `attachInterrupt`.
+- **D2 y D3 son los únicos pines de interrupción externa (INT0/INT1)**. D2 está en uso por el TRIG del sensor de pasillo (por sondeo, no por interrupción). D3 lo usa el botón de pánico, vía `attachInterrupt`.
 - Sin WiFi nativo — usar módulo ESP8266 (AT commands vía SoftwareSerial) o HC-05 Bluetooth
 - Sin RTOS — código secuencial, evitar delay(), usar millis()
 - SRAM limitada: evitar String, preferir char[], F() macro para literales
@@ -69,18 +74,19 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 ### Seguridad / Emergencias
 - [x] Botón de pánico (interrupción INT1/D3) — toggle: un pulso activa, el siguiente desactiva; prioridad máxima sobre las demás alarmas
 - [ ] Detector de caída (MPU6050 vía I2C)
-- [x] Alarma sonora (buzzer pasivo) — implementada para proximidad, inmovilidad en cama y pánico
-- [x] Alarma de inmovilidad prolongada en cama (sensor de presión, luz + buzzer si pasan 7h seguidas acostado) — no estaba en el roadmap original, se agregó a pedido
+- [x] Alarma sonora (buzzer pasivo) — implementada para proximidad y pánico (inmovilidad en cama desactivada temporalmente)
+- [~] Alarma de inmovilidad prolongada en cama (sensor de presión, luz + buzzer si pasan 7h seguidas acostado) — DESACTIVADA TEMPORALMENTE (comentada, no borrada, ver `config.h`/`main.cpp`/`sensors.cpp`); no estaba en el roadmap original, se había agregado a pedido
 
 ### Monitoreo Ambiental
 - [ ] Temperatura y humedad (DHT11 o DHT22)
 - [ ] Detector de gas/humo (MQ-2)
-- [x] Sensor de movimiento PIR (presencia en habitaciones) — implementado para el pasillo
+- [~] Sensor de movimiento PIR (presencia en habitaciones) — REEMPLAZADO por un 3er sensor ultrasónico SRF-05 en el pasillo (detecta presencia por distancia ≤10cm, no movimiento real; ver "Luz de pasillo" arriba). El PIR ya no está en uso, sus funciones quedaron comentadas en `sensors.h`/`sensors.cpp`
 
 ### Confort / Accesibilidad
-- [x] Control de iluminación — on/off simple con PIR (pasillo) y con la alarma de cama; falta el dimmer PWM
+- [x] Control de iluminación — on/off simple con el sensor de pasillo (SRF-05); falta el dimmer PWM
 - [ ] Display LCD 16x2 I2C con info de estado
 - [ ] Alarmas de medicamentos (RTC DS3231 + buzzer)
+- [~] Control de acceso a la puerta (lector RFID RC522 + servo) — no estaba en el roadmap original, se agregó a pedido. Implementado sin validación de UID todavía: cualquier tarjeta/tag leído abre la puerta 20s y se cierra sola. Falta agregar una lista de UIDs autorizados antes de considerarlo terminado para uso real.
 
 ### Conectividad
 - [ ] ESP8266 en modo AT para MQTT o HTTP hacia broker/dashboard
@@ -95,10 +101,11 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 
 ## Estructura de Archivos
 - [src/main.cpp](src/main.cpp) — punto de entrada; orquesta los módulos con temporizadores `millis()` no bloqueantes y arbitra la prioridad del buzzer compartido
-- [src/sensors.h](src/sensors.h) / [src/sensors.cpp](src/sensors.cpp) — lectura de los 2 HC-SR04, el PIR y el sensor de presión de cama (con anti-rebote)
+- [src/sensors.h](src/sensors.h) / [src/sensors.cpp](src/sensors.cpp) — lectura de los 3 sensores ultrasónicos SRF-05 (proximidad x2 + pasillo) y la fotocelda (con anti-rebote); las funciones del PIR (ya no en uso) y del sensor de presión de cama están comentadas
 - [src/alerts.h](src/alerts.h) / [src/alerts.cpp](src/alerts.cpp) — control del buzzer compartido (`actualizarBuzzer(pin, frecuenciaHz)`) y del botón de pánico (interrupción + anti-rebote + toggle)
-- [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control de los LEDs vía 74HC595 (proximidad y pánico)
-- [src/lighting.h](src/lighting.h) / [src/lighting.cpp](src/lighting.cpp) — encender/apagar la luz de pasillo y la luz de alarma de cama
+- [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control directo del LED de pánico (`digitalWrite`, ya no vía 74HC595)
+- [src/lighting.h](src/lighting.h) / [src/lighting.cpp](src/lighting.cpp) — encender/apagar la luz de pasillo
+- [src/access.h](src/access.h) / [src/access.cpp](src/access.cpp) — control de acceso a la puerta: lector RFID RC522 (librería `MFRC522`) + servo del pestillo (librería `Servo`), no bloqueante
 - [include/config.h](include/config.h) — constantes de pines y parámetros (umbrales, timeouts, tiempos de debounce)
 - [platformio.ini](platformio.ini) — único entorno `uno` (plataforma atmelavr, framework Arduino)
 - [diagram.json](diagram.json) — circuito de Wokwi

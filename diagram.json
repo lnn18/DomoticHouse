@@ -32,24 +32,15 @@
       "attrs": {}
     },
     {
-      "type": "wokwi-74hc595",
-      "id": "shiftreg",
-      "top": 120,
-      "left": 430,
-      "attrs": {}
+      "type": "wokwi-led",
+      "id": "ledPanico",
+      "top": 320,
+      "left": 560,
+      "attrs": { "color": "red" }
     },
     {
-      "type": "wokwi-led-bar-graph",
-      "id": "ledbar",
-      "top": 80,
-      "left": 700,
-      "attrs": {
-        "color": "green"
-      }
-    },
-    {
-      "type": "wokwi-pir-motion-sensor",
-      "id": "pirPasillo",
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonicPasillo",
       "top": -60,
       "left": 780,
       "attrs": {}
@@ -62,25 +53,32 @@
       "attrs": { "color": "yellow" }
     },
     {
-      "type": "wokwi-potentiometer",
-      "id": "sensorPresionCama",
-      "top": 320,
-      "left": 780,
-      "attrs": {}
-    },
-    {
-      "type": "wokwi-led",
-      "id": "luzAlarmaCama",
-      "top": 440,
-      "left": 780,
-      "attrs": { "color": "red" }
-    },
-    {
       "type": "wokwi-pushbutton",
       "id": "botonPanico",
       "top": 560,
       "left": 780,
       "attrs": { "color": "red" }
+    },
+    {
+      "type": "board-mfrc522",
+      "id": "rfidPuerta",
+      "top": 40,
+      "left": 20,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servoPuerta",
+      "top": 40,
+      "left": 900,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "fotocelda",
+      "top": 320,
+      "left": 300,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -98,39 +96,34 @@
     [ "buzzer:1", "uno:4", "orange", [ "v0" ] ],
     [ "buzzer:2", "uno:GND.2", "black", [ "v0" ] ],
 
-    [ "shiftreg:VCC", "uno:5V", "red", [ "h0" ] ],
-    [ "shiftreg:GND", "uno:GND.3", "black", [ "h0" ] ],
+    [ "ledPanico:A", "uno:A1", "orange", [ "v0" ] ],
+    [ "ledPanico:C", "uno:GND.2", "black", [ "v0" ] ],
 
-    [ "shiftreg:DS", "uno:13", "purple", [ "h0" ] ],
-    [ "shiftreg:SHCP", "uno:11", "yellow", [ "h0" ] ],
-    [ "shiftreg:STCP", "uno:12", "cyan", [ "h0" ] ],
-
-    [ "shiftreg:Q0", "ledbar:A1", "green", [ "h0" ] ],
-    [ "shiftreg:Q1", "ledbar:A2", "green", [ "h0" ] ],
-    [ "shiftreg:Q2", "ledbar:A3", "green", [ "h0" ] ],
-    [ "shiftreg:Q3", "ledbar:A4", "green", [ "h0" ] ],
-    [ "shiftreg:Q4", "ledbar:A5", "green", [ "h0" ] ],
-    [ "shiftreg:Q5", "ledbar:A6", "green", [ "h0" ] ],
-    [ "shiftreg:Q6", "ledbar:A7", "green", [ "h0" ] ],
-    [ "shiftreg:Q7", "ledbar:A8", "green", [ "h0" ] ],
-
-    [ "ledbar:C1", "uno:GND.4", "black", [ "v0" ] ],
-
-    [ "pirPasillo:VCC", "uno:5V", "red", [ "v0" ] ],
-    [ "pirPasillo:GND", "uno:GND.1", "black", [ "v0" ] ],
-    [ "pirPasillo:OUT", "uno:2", "green", [ "v0" ] ],
+    [ "ultrasonicPasillo:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "ultrasonicPasillo:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonicPasillo:TRIG", "uno:2", "green", [ "v0" ] ],
+    [ "ultrasonicPasillo:ECHO", "uno:5", "blue", [ "v0" ] ],
 
     [ "luzPasillo:A", "uno:6", "orange", [ "v0" ] ],
     [ "luzPasillo:C", "uno:GND.1", "black", [ "v0" ] ],
 
-    [ "sensorPresionCama:VCC", "uno:5V", "red", [ "v0" ] ],
-    [ "sensorPresionCama:GND", "uno:GND.1", "black", [ "v0" ] ],
-    [ "sensorPresionCama:SIG", "uno:A0", "blue", [ "v0" ] ],
-
-    [ "luzAlarmaCama:A", "uno:5", "orange", [ "v0" ] ],
-    [ "luzAlarmaCama:C", "uno:GND.1", "black", [ "v0" ] ],
-
     [ "botonPanico:1.l", "uno:3", "green", [ "v0" ] ],
-    [ "botonPanico:2.l", "uno:GND.1", "black", [ "v0" ] ]
+    [ "botonPanico:2.l", "uno:GND.1", "black", [ "v0" ] ],
+
+    [ "rfidPuerta:VCC", "uno:3.3V", "red", [ "v0" ] ],
+    [ "rfidPuerta:GND", "uno:GND.3", "black", [ "v0" ] ],
+    [ "rfidPuerta:MOSI", "uno:11", "purple", [ "v0" ] ],
+    [ "rfidPuerta:MISO", "uno:12", "cyan", [ "v0" ] ],
+    [ "rfidPuerta:SCK", "uno:13", "yellow", [ "v0" ] ],
+    [ "rfidPuerta:SDA", "uno:A4", "blue", [ "v0" ] ],
+    [ "rfidPuerta:RST", "uno:A5", "green", [ "v0" ] ],
+
+    [ "servoPuerta:PWM", "uno:A2", "green", [ "v0" ] ],
+    [ "servoPuerta:V+", "uno:5V", "red", [ "v0" ] ],
+    [ "servoPuerta:GND", "uno:GND.4", "black", [ "v0" ] ],
+
+    [ "fotocelda:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "fotocelda:GND", "uno:GND.2", "black", [ "v0" ] ],
+    [ "fotocelda:AO", "uno:A0", "blue", [ "v0" ] ]
   ]
 }

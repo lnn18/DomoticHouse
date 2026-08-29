@@ -3,19 +3,15 @@
 
 #include <Arduino.h>
 
-// Como funciona el 74HC595 (registro de desplazamiento):
-// recibe los bits (encendido/apagado) uno por uno por el pin DATOS, sincronizados por
-// el pin CLOCK, y cuando termina de recibirlos todos los "publica" de golpe en sus 8
-// salidas (Q0 a Q7) al mover el pin LATCH. Asi se controlan hasta 8 LEDs usando solo 3
-// pines del Arduino.
+// El LED de panico se controla directo (sin registro de desplazamiento): antes vivia
+// en el 74HC595, pero ese registro se quito para liberar el bus SPI (D11/D12/D13) que
+// ahora usa el lector RC522. La alarma de proximidad ya no tiene LED propio, solo el
+// buzzer (ver actualizarBuzzerCompartido en main.cpp).
 
-// Configura los pines del registro de desplazamiento 74HC595 (llamar una vez en setup()).
-void inicializarDisplay(uint8_t pinClock, uint8_t pinLatch, uint8_t pinDatos);
+// Configura el pin del LED de panico (llamar una vez en setup()).
+void inicializarDisplay(uint8_t pinLedPanico);
 
-// Actualiza las salidas del registro con el estado de cada luz que controla:
-// Q0/Q1 para la deteccion de proximidad, Q2 para la alarma de panico.
-// Se llama una sola vez por vuelta de loop() (el shiftOut() manda los 8 bits juntos,
-// asi que hace falta conocer el estado de todas las luces antes de enviarlo).
-void actualizarLeds(uint8_t pinClock, uint8_t pinLatch, uint8_t pinDatos, bool proximidadActiva, bool panicoActivo);
+// Enciende o apaga el LED de panico segun corresponda.
+void actualizarLeds(uint8_t pinLedPanico, bool panicoActivo);
 
 #endif
