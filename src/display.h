@@ -3,15 +3,16 @@
 
 #include <Arduino.h>
 
-// El LED de panico se controla directo (sin registro de desplazamiento): antes vivia
-// en el 74HC595, pero ese registro se quito para liberar el bus SPI (D11/D12/D13) que
-// ahora usa el lector RC522. La alarma de proximidad ya no tiene LED propio, solo el
-// buzzer (ver actualizarBuzzerCompartido en main.cpp).
+// Los LEDs se controlan directo (sin registro de desplazamiento): antes vivian en el
+// 74HC595, pero ese registro se quito para liberar el bus SPI (D11/D12/D13) que ahora
+// usa el lector RC522.
 
-// Configura el pin del LED de panico (llamar una vez en setup()).
-void inicializarDisplay(uint8_t pinLedPanico);
+// Configura los pines de los LEDs (llamar una vez en setup()).
+void inicializarDisplay(uint8_t pinLedPanico, uint8_t pinLedProximidad);
 
-// Enciende o apaga el LED de panico segun corresponda.
-void actualizarLeds(uint8_t pinLedPanico, bool panicoActivo);
+// Enciende o apaga cada LED segun corresponda. El LED de proximidad es el canal visual
+// de esa alarma (ver PIN_LED_PROXIMIDAD en config.h): se enciende con las mismas
+// condiciones que su buzzer, no con el buzzer de panico.
+void actualizarLeds(uint8_t pinLedPanico, bool panicoActivo, uint8_t pinLedProximidad, bool proximidadActiva);
 
 #endif

@@ -5,9 +5,8 @@
 
 // Control de acceso a la puerta: lector RFID RC522 + servo del pestillo.
 //
-// Version inicial de prueba: CUALQUIER tarjeta/tag valido (leido correctamente por el
-// RC522) abre la puerta. Todavia no hay lista de UIDs autorizados -- se agregara como
-// paso siguiente, una vez verificado que el lector y el servo funcionan bien juntos.
+// Solo abre la puerta un UID que este en UIDS_AUTORIZADOS (ver config.h). Cualquier otra
+// tarjeta/tag leido correctamente se registra por Serial pero NO abre la puerta.
 
 // Configura el RC522 (SPI + pines SS/RST) y el servo de la puerta (llamar una vez en setup()).
 void inicializarAcceso(uint8_t pinRfidSs, uint8_t pinRfidRst, uint8_t pinServo);

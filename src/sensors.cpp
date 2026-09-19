@@ -38,11 +38,10 @@ namespace {
 // unsigned long ULTIMO_CAMBIO_PIR_MILLIS = 0;
 // bool MOVIMIENTO_ESTABLE = false;
 
-// Mismo patron de anti-rebote, aplicado a la lectura analogica del sensor de presion.
-// DESACTIVADO TEMPORALMENTE junto con el resto de la alarma de cama (ver config.h y main.cpp).
-// bool ULTIMO_ESTADO_FSR = false;
-// unsigned long ULTIMO_CAMBIO_FSR_MILLIS = 0;
-// bool PRESION_ESTABLE = false;
+// Mismo patron de anti-rebote, aplicado al switch (temporal) que simula el sensor de presion.
+bool ULTIMO_ESTADO_FSR = false;
+unsigned long ULTIMO_CAMBIO_FSR_MILLIS = 0;
+bool PRESION_ESTABLE = false;
 
 // Mismo patron de anti-rebote, aplicado a la lectura analogica de la fotocelda: evita que
 // la luz de pasillo y la alarma de proximidad parpadeen si la luz ambiente esta justo en
@@ -71,28 +70,32 @@ bool ES_DE_NOCHE_ESTABLE = false;
 //   return MOVIMIENTO_ESTABLE;
 // }
 
-// DESACTIVADAS TEMPORALMENTE junto con el resto de la alarma de cama (ver config.h y main.cpp):
-// usan PIN_FSR_CAMA / DEBOUNCE_PRESION_CAMA_MS, que quedaron comentadas alli.
-// void inicializarSensorPresionCama(uint8_t pinFsr) {
-//   pinMode(pinFsr, INPUT);
-// }
-//
-// bool hayPersonaEnCama(uint8_t pinFsr, int umbralAdc) {
-//   bool estadoActual = analogRead(pinFsr) >= umbralAdc;
-//   unsigned long ahora = millis();
-//
-//   // El anti-rebote aqui es clave: sin el, un roce o un ruido de lectura que baje
-//   // la presion un instante reiniciaria el temporizador de "tiempo en cama" en
-//   // main.cpp, y la alarma de 7 horas nunca se dispararia (falla silenciosa).
-//   if (estadoActual != ULTIMO_ESTADO_FSR) {
-//     ULTIMO_CAMBIO_FSR_MILLIS = ahora;
-//     ULTIMO_ESTADO_FSR = estadoActual;
-//   }
-//   if (ahora - ULTIMO_CAMBIO_FSR_MILLIS >= DEBOUNCE_PRESION_CAMA_MS) {
-//     PRESION_ESTABLE = estadoActual;
-//   }
-//   return PRESION_ESTABLE;
-// }
+// Switch (temporal) que simula el sensor de presion de la cama, mientras no este armado el
+// FSR real -- ver PIN_FSR_CAMA en config.h. INPUT_PULLUP + digitalRead, mismo patron que el
+// boton de panico: switch cerrado (pin en LOW) = "hay presion" (alguien en la cama).
+void inicializarSensorPresionCama(uint8_t pinFsr) {
+  pinMode(pinFsr, INPUT_PULLUP);
+}
+
+bool hayPersonaEnCama(uint8_t pinFsr) {
+  bool estadoActual = digitalRead(pinFsr) == LOW; // INPUT_PULLUP: switch cerrado = LOW = "hay presion"
+  unsigned long ahora = millis();
+
+  // El anti-rebote aqui es clave: sin el, un roce o un rebote mecanico del switch que
+  // "suelte" la señal un instante reiniciaria el temporizador de "tiempo en cama" en
+  // main.cpp, y la alarma de 7 horas nunca se dispararia (falla silenciosa). Con el FSR
+  // real (analogRead + umbral) el mismo razonamiento aplica igual, pero con ruido de
+  // lectura analogica en vez de rebote mecanico -- ver nota de DEBOUNCE_PRESION_CAMA_MS
+  // en config.h sobre el valor a usar en cada caso.
+  if (estadoActual != ULTIMO_ESTADO_FSR) {
+    ULTIMO_CAMBIO_FSR_MILLIS = ahora;
+    ULTIMO_ESTADO_FSR = estadoActual;
+  }
+  if (ahora - ULTIMO_CAMBIO_FSR_MILLIS >= DEBOUNCE_PRESION_CAMA_MS) {
+    PRESION_ESTABLE = estadoActual;
+  }
+  return PRESION_ESTABLE;
+}
 
 void inicializarFotocelda(uint8_t pinFotocelda) {
   pinMode(pinFotocelda, INPUT);

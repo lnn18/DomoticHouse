@@ -39,6 +39,13 @@
       "attrs": { "color": "red" }
     },
     {
+      "type": "wokwi-led",
+      "id": "ledProximidad",
+      "top": 320,
+      "left": 680,
+      "attrs": { "color": "orange" }
+    },
+    {
       "type": "wokwi-hc-sr04",
       "id": "ultrasonicPasillo",
       "top": -60,
@@ -53,6 +60,20 @@
       "attrs": { "color": "yellow" }
     },
     {
+      "type": "wokwi-led",
+      "id": "luzPasillo2",
+      "top": 260,
+      "left": 780,
+      "attrs": { "color": "yellow" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "luzPasillo3",
+      "top": 320,
+      "left": 780,
+      "attrs": { "color": "yellow" }
+    },
+    {
       "type": "wokwi-pushbutton",
       "id": "botonPanico",
       "top": 560,
@@ -60,25 +81,25 @@
       "attrs": { "color": "red" }
     },
     {
-      "type": "board-mfrc522",
-      "id": "rfidPuerta",
-      "top": 40,
-      "left": 20,
-      "attrs": {}
-    },
-    {
-      "type": "wokwi-servo",
-      "id": "servoPuerta",
-      "top": 40,
-      "left": 900,
-      "attrs": {}
-    },
-    {
       "type": "wokwi-photoresistor-sensor",
       "id": "fotocelda",
       "top": 320,
       "left": 300,
       "attrs": {}
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "switchCama",
+      "top": 480,
+      "left": 780,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "luzAlarmaCama",
+      "top": 480,
+      "left": 900,
+      "attrs": { "color": "red" }
     }
   ],
   "connections": [
@@ -99,6 +120,9 @@
     [ "ledPanico:A", "uno:A1", "orange", [ "v0" ] ],
     [ "ledPanico:C", "uno:GND.2", "black", [ "v0" ] ],
 
+    [ "ledProximidad:A", "uno:10", "orange", [ "v0" ] ],
+    [ "ledProximidad:C", "uno:GND.2", "black", [ "v0" ] ],
+
     [ "ultrasonicPasillo:VCC", "uno:5V", "red", [ "v0" ] ],
     [ "ultrasonicPasillo:GND", "uno:GND.1", "black", [ "v0" ] ],
     [ "ultrasonicPasillo:TRIG", "uno:2", "green", [ "v0" ] ],
@@ -107,23 +131,23 @@
     [ "luzPasillo:A", "uno:6", "orange", [ "v0" ] ],
     [ "luzPasillo:C", "uno:GND.1", "black", [ "v0" ] ],
 
+    [ "luzPasillo2:A", "uno:6", "orange", [ "v0" ] ],
+    [ "luzPasillo2:C", "uno:GND.1", "black", [ "v0" ] ],
+
+    [ "luzPasillo3:A", "uno:6", "orange", [ "v0" ] ],
+    [ "luzPasillo3:C", "uno:GND.1", "black", [ "v0" ] ],
+
     [ "botonPanico:1.l", "uno:3", "green", [ "v0" ] ],
     [ "botonPanico:2.l", "uno:GND.1", "black", [ "v0" ] ],
 
-    [ "rfidPuerta:VCC", "uno:3.3V", "red", [ "v0" ] ],
-    [ "rfidPuerta:GND", "uno:GND.3", "black", [ "v0" ] ],
-    [ "rfidPuerta:MOSI", "uno:11", "purple", [ "v0" ] ],
-    [ "rfidPuerta:MISO", "uno:12", "cyan", [ "v0" ] ],
-    [ "rfidPuerta:SCK", "uno:13", "yellow", [ "v0" ] ],
-    [ "rfidPuerta:SDA", "uno:A4", "blue", [ "v0" ] ],
-    [ "rfidPuerta:RST", "uno:A5", "green", [ "v0" ] ],
-
-    [ "servoPuerta:PWM", "uno:9", "green", [ "v0" ] ],
-    [ "servoPuerta:V+", "uno:5V", "red", [ "v0" ] ],
-    [ "servoPuerta:GND", "uno:GND.4", "black", [ "v0" ] ],
-
     [ "fotocelda:VCC", "uno:5V", "red", [ "v0" ] ],
     [ "fotocelda:GND", "uno:GND.2", "black", [ "v0" ] ],
-    [ "fotocelda:AO", "uno:A0", "blue", [ "v0" ] ]
+    [ "fotocelda:AO", "uno:A0", "blue", [ "v0" ] ],
+
+    [ "switchCama:2", "uno:A4", "green", [ "v0" ] ],
+    [ "switchCama:1", "uno:GND.3", "black", [ "v0" ] ],
+
+    [ "luzAlarmaCama:A", "uno:9", "orange", [ "v0" ] ],
+    [ "luzAlarmaCama:C", "uno:GND.3", "black", [ "v0" ] ]
   ]
 }

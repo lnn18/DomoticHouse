@@ -23,13 +23,15 @@ long medirDistanciaCm(uint8_t pinTrig, uint8_t pinEcho);
 // void inicializarSensorPir(uint8_t pinPir);
 // bool detectaMovimiento(uint8_t pinPir);
 
-// DESACTIVADAS TEMPORALMENTE junto con el resto de la alarma de cama (ver config.h y main.cpp).
-// Configura el pin del sensor de presion de la cama (llamar una vez en setup()).
-// void inicializarSensorPresionCama(uint8_t pinFsr);
+// Sensor de presion de la cama: simulado con un switch digital (INPUT_PULLUP), mismo patron
+// que el boton de panico, mientras no este armado el FSR real (ver PIN_FSR_CAMA en config.h).
+// Configura el pin del switch/FSR (llamar una vez en setup()).
+void inicializarSensorPresionCama(uint8_t pinFsr);
 
 // Indica si hay presion estable sobre la cama, es decir, si la persona esta acostada
-// (con anti-rebote interno para no reaccionar a ruido momentaneo de la lectura).
-// bool hayPersonaEnCama(uint8_t pinFsr, int umbralAdc);
+// (con anti-rebote interno para no reaccionar a un rebote mecanico del switch, o a ruido
+// momentaneo de la lectura una vez que se reemplace por el FSR analogico real).
+bool hayPersonaEnCama(uint8_t pinFsr);
 
 // Configura el pin de la fotocelda (LDR, llamar una vez en setup()).
 void inicializarFotocelda(uint8_t pinFotocelda);

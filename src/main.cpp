@@ -32,13 +32,12 @@ long DEBUG_DISTANCIA_PASILLO = -1;
 bool LUZ_PASILLO_ENCENDIDA = false;
 unsigned long ULTIMA_DETECCION_PASILLO_MILLIS = 0;
 
-// --- Alarma de cama: DESACTIVADA TEMPORALMENTE ---
-// Toda la logica que usa estas variables (actualizarAlarmaCama) esta comentada mas abajo.
-// bool EN_CAMA = false;
-// unsigned long INICIO_EN_CAMA_MILLIS = 0;
-// bool HUBO_AUSENCIA_CAMA = false;
-// unsigned long INICIO_AUSENCIA_CAMA_MILLIS = 0;
-// bool ALARMA_CAMA_ACTIVA = false;
+// --- Alarma de cama: reactivada, con switch simulando el FSR real (ver config.h) ---
+bool EN_CAMA = false;
+unsigned long INICIO_EN_CAMA_MILLIS = 0;
+bool HUBO_AUSENCIA_CAMA = false;
+unsigned long INICIO_AUSENCIA_CAMA_MILLIS = 0;
+bool ALARMA_CAMA_ACTIVA = false;
 
 // Boton de panico: es la alarma de mayor prioridad de todo el sistema.
 bool ALARMA_PANICO_ACTIVA = false;
@@ -60,18 +59,23 @@ void setup() {
   inicializarSensor(PIN_TRIG_PASILLO, PIN_ECHO_PASILLO); // 3er SRF-05, usado para presencia en el pasillo
 
   inicializarAlerta(PIN_BUZZER); // Prepara el pin del buzzer
-  inicializarDisplay(PIN_LED_PANICO); // Prepara el LED de panico (control directo)
+  inicializarDisplay(PIN_LED_PANICO, PIN_LED_PROXIMIDAD); // Prepara los LEDs (control directo)
 
   inicializarLuz(PIN_LUZ_PASILLO);
 
   inicializarFotocelda(PIN_FOTOCELDA);
 
-  // inicializarSensorPresionCama(PIN_FSR_CAMA); // Alarma de cama desactivada temporalmente
-  // inicializarLuz(PIN_LUZ_ALARMA_CAMA);
+  inicializarSensorPresionCama(PIN_FSR_CAMA); // Switch (temporal, simula el FSR real -- ver config.h)
+  inicializarLuz(PIN_LUZ_ALARMA_CAMA);
 
   inicializarBotonPanico(PIN_BOTON_PANICO);
 
-  inicializarAcceso(PIN_RFID_SS, PIN_RFID_RST, PIN_SERVO_PUERTA);
+  // RFID/servo PAUSADO TEMPORALMENTE (no borrado, ver access.cpp/access.h): el modulo RC522
+  // tiene un problema de hardware (antena no irradia campo RF pese a que el chip responde
+  // bien por SPI, ver diagnostico en el historial del proyecto). Se libera A4 (antes
+  // PIN_RFID_SS) para el switch de cama (PIN_FSR_CAMA); si el RFID se reactiva, ese switch
+  // necesita otro pin antes de descomentar esta linea.
+  // inicializarAcceso(PIN_RFID_SS, PIN_RFID_RST, PIN_SERVO_PUERTA);
 }
 
 // Lee los 2 sensores ultrasonicos de proximidad y actualiza ALERTA_ACTIVA. Se llama cada
@@ -89,8 +93,8 @@ void actualizarProximidad(unsigned long ahora, bool esDeNoche) {
   DEBUG_DISTANCIA_1 = distancia1; // DEBUG TEMPORAL: guardado para imprimirDebug()
   DEBUG_DISTANCIA_2 = distancia2;
 
-  bool deteccion1 = (distancia1 >= 0) && (distancia1 <= UMBRAL_DETECCION_CM);
-  bool deteccion2 = (distancia2 >= 0) && (distancia2 <= UMBRAL_DETECCION_CM);
+  bool deteccion1 = (distancia1 >= 0) && (distancia1 <= UMBRAL_DETECCION_1_CM);
+  bool deteccion2 = (distancia2 >= 0) && (distancia2 <= UMBRAL_DETECCION_2_CM);
 
   ALERTA_ACTIVA = esDeNoche && (deteccion1 || deteccion2);
 }
@@ -115,56 +119,60 @@ void actualizarLuzPasillo(unsigned long ahora, bool esDeNoche) {
   }
 }
 
-// --- Alarma de cama: DESACTIVADA TEMPORALMENTE ---
+// --- Alarma de cama ---
 // Sigue cuanto tiempo lleva la persona acostada y dispara la alarma (luz) tras TIEMPO_MAX_EN_CAMA_MS.
 // Una ausencia de presion corta (ej. un giro en la cama) no reinicia el conteo: solo si la
 // ausencia se sostiene mas de TOLERANCIA_AUSENCIA_CAMA_MS se confirma que la persona se levanto.
-// void actualizarAlarmaCama(unsigned long ahora) {
-//   bool presionDetectada = hayPersonaEnCama(PIN_FSR_CAMA, UMBRAL_PRESION_CAMA_ADC);
-//
-//   if (presionDetectada) {
-//     if (!EN_CAMA) {
-//       EN_CAMA = true;
-//       INICIO_EN_CAMA_MILLIS = ahora;
-//     }
-//     HUBO_AUSENCIA_CAMA = false;
-//   } else if (EN_CAMA) {
-//     if (!HUBO_AUSENCIA_CAMA) {
-//       HUBO_AUSENCIA_CAMA = true;
-//       INICIO_AUSENCIA_CAMA_MILLIS = ahora;
-//     } else if (ahora - INICIO_AUSENCIA_CAMA_MILLIS >= TOLERANCIA_AUSENCIA_CAMA_MS) {
-//       // La ausencia ya duro lo suficiente: se confirma que la persona se levanto.
-//       EN_CAMA = false;
-//       HUBO_AUSENCIA_CAMA = false;
-//       ALARMA_CAMA_ACTIVA = false;
-//     }
-//   }
-//
-//   if (EN_CAMA && (ahora - INICIO_EN_CAMA_MILLIS >= TIEMPO_MAX_EN_CAMA_MS)) {
-//     ALARMA_CAMA_ACTIVA = true;
-//   }
-//
-//   if (ALARMA_CAMA_ACTIVA) {
-//     encenderLuz(PIN_LUZ_ALARMA_CAMA);
-//   } else {
-//     apagarLuz(PIN_LUZ_ALARMA_CAMA);
-//   }
-// }
+// hayPersonaEnCama() lee un switch (digitalRead) que simula el FSR real -- ver config.h.
+void actualizarAlarmaCama(unsigned long ahora) {
+  bool presionDetectada = hayPersonaEnCama(PIN_FSR_CAMA);
 
-// El LED de panico se controla directo (ya no hay registro de desplazamiento compartido).
-void actualizarLedsCompartidos() {
-  actualizarLeds(PIN_LED_PANICO, ALARMA_PANICO_ACTIVA);
+  if (presionDetectada) {
+    if (!EN_CAMA) {
+      EN_CAMA = true;
+      INICIO_EN_CAMA_MILLIS = ahora;
+    }
+    HUBO_AUSENCIA_CAMA = false;
+  } else if (EN_CAMA) {
+    if (!HUBO_AUSENCIA_CAMA) {
+      HUBO_AUSENCIA_CAMA = true;
+      INICIO_AUSENCIA_CAMA_MILLIS = ahora;
+    } else if (ahora - INICIO_AUSENCIA_CAMA_MILLIS >= TOLERANCIA_AUSENCIA_CAMA_MS) {
+      // La ausencia ya duro lo suficiente: se confirma que la persona se levanto.
+      EN_CAMA = false;
+      HUBO_AUSENCIA_CAMA = false;
+      ALARMA_CAMA_ACTIVA = false;
+    }
+  }
+
+  if (EN_CAMA && (ahora - INICIO_EN_CAMA_MILLIS >= TIEMPO_MAX_EN_CAMA_MS)) {
+    ALARMA_CAMA_ACTIVA = true;
+  }
+
+  if (ALARMA_CAMA_ACTIVA) {
+    encenderLuz(PIN_LUZ_ALARMA_CAMA);
+  } else {
+    apagarLuz(PIN_LUZ_ALARMA_CAMA);
+  }
 }
 
-// El buzzer es un recurso compartido: panico > proximidad (la alarma de cama esta
-// desactivada temporalmente, ver ALARMA_CAMA_ACTIVA mas arriba).
-// Se decide una sola frecuencia por vuelta de loop() antes de pedirla.
+// Los LEDs se controlan directo (ya no hay registro de desplazamiento compartido).
+// El LED de proximidad usa ALERTA_ACTIVA: las mismas condiciones que su buzzer
+// (objeto a <=20cm Y de noche), sin relacion con el panico.
+void actualizarLedsCompartidos() {
+  actualizarLeds(PIN_LED_PANICO, ALARMA_PANICO_ACTIVA, PIN_LED_PROXIMIDAD, ALERTA_ACTIVA);
+}
+
+// El buzzer es un recurso compartido: panico > cama > proximidad. Panico tiene la maxima
+// prioridad (emergencia inmediata); cama va antes que proximidad porque una inmovilidad
+// prolongada es una condicion mas grave y sostenida que un objeto pasajero cerca de un
+// sensor. Se decide una sola frecuencia por vuelta de loop() antes de pedirla.
 void actualizarBuzzerCompartido() {
   unsigned int frecuenciaBuzzer = 0;
   if (ALARMA_PANICO_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_PANICO_HZ;
-  // } else if (/* ALARMA_CAMA_ACTIVA, desactivada temporalmente */ false) {
-  //   frecuenciaBuzzer = FRECUENCIA_ALARMA_CAMA_HZ;
+  } else if (ALARMA_CAMA_ACTIVA) {
+    frecuenciaBuzzer = FRECUENCIA_ALARMA_CAMA_HZ;
   } else if (ALERTA_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_PROXIMIDAD_HZ;
   }
@@ -214,8 +222,8 @@ void loop() {
   ALARMA_PANICO_ACTIVA = actualizarAlarmaPanico();
   actualizarProximidad(ahora, esDeNocheAhora);
   actualizarLuzPasillo(ahora, esDeNocheAhora);
-  // actualizarAlarmaCama(ahora); // Alarma de cama desactivada temporalmente
-  actualizarAcceso();
+  actualizarAlarmaCama(ahora);
+  // actualizarAcceso(); // RFID/servo pausado temporalmente -- ver nota en setup()
 
   actualizarLedsCompartidos();
   actualizarBuzzerCompartido();
