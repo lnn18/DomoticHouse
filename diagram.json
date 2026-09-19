@@ -85,8 +85,8 @@
 
     [ "ultrasonic:VCC", "uno:5V", "red", [ "v0" ] ],
     [ "ultrasonic:GND", "uno:GND.1", "black", [ "v0" ] ],
-    [ "ultrasonic:TRIG", "uno:9", "green", [ "v0" ] ],
-    [ "ultrasonic:ECHO", "uno:10", "blue", [ "v0" ] ],
+    [ "ultrasonic:TRIG", "uno:A2", "green", [ "v0" ] ],
+    [ "ultrasonic:ECHO", "uno:A3", "blue", [ "v0" ] ],
 
     [ "ultrasonic2:VCC", "uno:5V", "red", [ "v0" ] ],
     [ "ultrasonic2:GND", "uno:GND.1", "black", [ "v0" ] ],
@@ -118,7 +118,7 @@
     [ "rfidPuerta:SDA", "uno:A4", "blue", [ "v0" ] ],
     [ "rfidPuerta:RST", "uno:A5", "green", [ "v0" ] ],
 
-    [ "servoPuerta:PWM", "uno:A2", "green", [ "v0" ] ],
+    [ "servoPuerta:PWM", "uno:9", "green", [ "v0" ] ],
     [ "servoPuerta:V+", "uno:5V", "red", [ "v0" ] ],
     [ "servoPuerta:GND", "uno:GND.4", "black", [ "v0" ] ],
 

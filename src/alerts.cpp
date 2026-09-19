@@ -64,6 +64,8 @@ bool actualizarAlarmaPanico() {
     if (ahora - ULTIMO_TOGGLE_PANICO_MILLIS >= DEBOUNCE_BOTON_PANICO_MS) {
       ALARMA_PANICO_ACTIVA_INTERNA = !ALARMA_PANICO_ACTIVA_INTERNA; // toggle: activa/desactiva con cada pulso valido
       ULTIMO_TOGGLE_PANICO_MILLIS = ahora;
+      // DEBUG TEMPORAL: se imprime solo cuando cambia de estado, no en cada vuelta de loop().
+      Serial.println(ALARMA_PANICO_ACTIVA_INTERNA ? F("Panico: ACTIVADO") : F("Panico: desactivado"));
     }
     // Si el pulso cayo dentro de la ventana de rebote, no se hace nada mas:
     // eso es justamente lo que descarta los rebotes sin generar toggles de mas.

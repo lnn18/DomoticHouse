@@ -11,8 +11,21 @@
 // esperar un intervalo sin usar delay() (que congelaria todo el programa).
 unsigned long ULTIMA_LECTURA_MILLIS = 0;
 
+// DEBUG TEMPORAL: controla cada cuanto se imprimen los logs de depuracion (separado de
+// INTERVALO_LECTURA_MS, que regula cada cuanto se LEEN los sensores de proximidad). Sin
+// esto, los logs de pasillo y fotocelda se imprimirian miles de veces por segundo (una
+// vez por vuelta de loop(), que no tiene ningun delay), haciendo el monitor serial ilegible.
+unsigned long ULTIMO_LOG_MILLIS = 0;
+constexpr unsigned long INTERVALO_LOG_MS = 500UL;
+
 // Indica si en este momento hay una alerta de proximidad activa (algun HC-SR04 detecto algo cerca).
 bool ALERTA_ACTIVA = false;
+
+// DEBUG TEMPORAL: ultima distancia leida de cada sensor, guardada aqui solo para poder
+// imprimirla en imprimirLogsDebug() sin tener que leer los sensores dos veces.
+long DEBUG_DISTANCIA_1 = -1;
+long DEBUG_DISTANCIA_2 = -1;
+long DEBUG_DISTANCIA_PASILLO = -1;
 
 // Luz del pasillo: se enciende cuando el SRF-05 de pasillo detecta algo cerca, y se
 // apaga sola tras un rato sin detectar nada.
@@ -73,21 +86,13 @@ void actualizarProximidad(unsigned long ahora, bool esDeNoche) {
 
   long distancia1 = medirDistanciaCm(PIN_TRIG_1, PIN_ECHO_1);
   long distancia2 = medirDistanciaCm(PIN_TRIG_2, PIN_ECHO_2);
+  DEBUG_DISTANCIA_1 = distancia1; // DEBUG TEMPORAL: guardado para imprimirDebug()
+  DEBUG_DISTANCIA_2 = distancia2;
 
   bool deteccion1 = (distancia1 >= 0) && (distancia1 <= UMBRAL_DETECCION_CM);
   bool deteccion2 = (distancia2 >= 0) && (distancia2 <= UMBRAL_DETECCION_CM);
 
   ALERTA_ACTIVA = esDeNoche && (deteccion1 || deteccion2);
-
-  // DEBUG TEMPORAL: quitar una vez verificado el montaje fisico de los SRF-05.
-  Serial.print(F("Sensor 1: "));
-  Serial.print(distancia1);
-  Serial.print(F(" cm | Sensor 2: "));
-  Serial.print(distancia2);
-  Serial.print(F(" cm | De noche: "));
-  Serial.print(esDeNoche ? F("SI") : F("no"));
-  Serial.print(F(" | Alerta: "));
-  Serial.println(ALERTA_ACTIVA ? F("SI") : F("no"));
 }
 
 // Enciende la luz del pasillo cuando el SRF-05 de pasillo detecta algo a menos de
@@ -95,6 +100,7 @@ void actualizarProximidad(unsigned long ahora, bool esDeNoche) {
 // De dia (esDeNoche == false) no enciende, aunque haya alguien cerca.
 void actualizarLuzPasillo(unsigned long ahora, bool esDeNoche) {
   long distanciaPasillo = medirDistanciaCm(PIN_TRIG_PASILLO, PIN_ECHO_PASILLO);
+  DEBUG_DISTANCIA_PASILLO = distanciaPasillo; // DEBUG TEMPORAL: guardado para imprimirDebug()
   bool hayAlguienCerca = (distanciaPasillo >= 0) && (distanciaPasillo <= UMBRAL_PASILLO_CM);
 
   if (esDeNoche && hayAlguienCerca) {
@@ -107,12 +113,6 @@ void actualizarLuzPasillo(unsigned long ahora, bool esDeNoche) {
     apagarLuz(PIN_LUZ_PASILLO);
     LUZ_PASILLO_ENCENDIDA = false;
   }
-
-  // DEBUG TEMPORAL: quitar una vez verificado el montaje fisico del SRF-05 de pasillo.
-  Serial.print(F("Pasillo: "));
-  Serial.print(distanciaPasillo);
-  Serial.print(F(" cm | Luz: "));
-  Serial.println(LUZ_PASILLO_ENCENDIDA ? F("encendida") : F("apagada"));
 }
 
 // --- Alarma de cama: DESACTIVADA TEMPORALMENTE ---
@@ -178,19 +178,38 @@ void actualizarBuzzerCompartido() {
 // ambas pueden bloquear brevemente (hasta ~60ms cada una, ver TIMEOUT_PULSO_US en config.h)
 // esperando el eco de los sensores ultrasonicos, y la alarma de mayor prioridad del sistema
 // no debe esperar a que esas lecturas terminen para reflejarse en el buzzer y el LED.
+// DEBUG TEMPORAL: imprime en un solo bloque legible el estado de los sensores de lectura
+// continua (proximidad, pasillo, fotocelda). Los eventos puntuales (panico, RFID, puerta)
+// se imprimen aparte, en el momento en que ocurren (ver alerts.cpp y access.cpp), porque
+// no tiene sentido esperar este intervalo para mostrarlos.
+void imprimirLogsDebug(bool esDeNoche) {
+  if (millis() - ULTIMO_LOG_MILLIS < INTERVALO_LOG_MS) {
+    return;
+  }
+  ULTIMO_LOG_MILLIS = millis();
+
+  Serial.print(F("Sensor 1: "));
+  Serial.print(DEBUG_DISTANCIA_1);
+  Serial.print(F(" cm | Sensor 2: "));
+  Serial.print(DEBUG_DISTANCIA_2);
+  Serial.print(F(" cm | Pasillo: "));
+  Serial.print(DEBUG_DISTANCIA_PASILLO);
+  Serial.print(F(" cm | Fotocelda ADC: "));
+  Serial.print(analogRead(PIN_FOTOCELDA));
+  Serial.print(F(" | De noche: "));
+  Serial.print(esDeNoche ? F("SI") : F("no"));
+  Serial.print(F(" | Alerta proximidad: "));
+  Serial.print(ALERTA_ACTIVA ? F("SI") : F("no"));
+  Serial.print(F(" | Luz pasillo: "));
+  Serial.println(LUZ_PASILLO_ENCENDIDA ? F("encendida") : F("apagada"));
+}
+
 void loop() {
   unsigned long ahora = millis(); // Milisegundos transcurridos desde que arranco el Arduino
 
   // Se lee una sola vez por vuelta de loop() y se comparte: tanto la luz de pasillo como
   // la alarma de proximidad dependen de si es de noche.
   bool esDeNocheAhora = esDeNoche(PIN_FOTOCELDA, UMBRAL_OSCURIDAD_ADC);
-
-  // DEBUG TEMPORAL: muestra la lectura cruda del divisor de voltaje (LDR + resistencia)
-  // para calibrar UMBRAL_OSCURIDAD_ADC con el LDR real. Quitar una vez calibrado.
-  Serial.print(F("Fotocelda ADC: "));
-  Serial.print(analogRead(PIN_FOTOCELDA));
-  Serial.print(F(" | De noche: "));
-  Serial.println(esDeNocheAhora ? F("SI") : F("no"));
 
   ALARMA_PANICO_ACTIVA = actualizarAlarmaPanico();
   actualizarProximidad(ahora, esDeNocheAhora);
@@ -200,4 +219,6 @@ void loop() {
 
   actualizarLedsCompartidos();
   actualizarBuzzerCompartido();
+
+  imprimirLogsDebug(esDeNocheAhora); // DEBUG TEMPORAL
 }

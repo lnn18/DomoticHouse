@@ -43,13 +43,15 @@ El proyecto se simula en Wokwi (extensión de VS Code o wokwi.com):
 - [wokwi.toml](wokwi.toml) apunta al binario compilado (`.pio/build/uno/firmware.hex` / `.elf`), así que hay que ejecutar `pio run` antes de iniciar la simulación.
 - [diagram.json](diagram.json) define el circuito simulado y el cableado. Los pines asignados en el código deben mantenerse sincronizados con las conexiones declaradas ahí:
   - Buzzer → pin 4
-  - Sensor de proximidad 1 (físico: SRF-05, modo 4 pines; simulado en Wokwi con la pieza `wokwi-hc-sr04`, eléctricamente equivalente): TRIG → pin 9, ECHO → pin 10
+  - Sensor de proximidad 1 (físico: SRF-05, modo 4 pines; simulado en Wokwi con la pieza `wokwi-hc-sr04`, eléctricamente equivalente): TRIG → pin A2, ECHO → pin A3 (**no D9/D10**: ver nota de Timer1 más abajo)
   - Sensor de proximidad 2 (mismo caso): TRIG → pin 7, ECHO → pin 8
   - LED de pánico: control directo (sin registro de desplazamiento) → pin A1
   - Sensor de pasillo (3er SRF-05, mismo caso que los de proximidad): TRIG → pin 2, ECHO → pin 5; luz de pasillo → pin 6
   - Botón de pánico: pin 3 (INT1), `INPUT_PULLUP` + `attachInterrupt(FALLING)`
   - Lector RFID RC522 (pieza nativa `board-mfrc522`): VCC → 3.3V (**no 5V**, daña el módulo), GND → GND, MOSI → pin 11, MISO → pin 12, SCK → pin 13 (bus SPI de hardware, fijo), SDA/SS → A4, RST → A5
-  - Servo de la puerta (pieza nativa `wokwi-servo`): señal PWM → A2 (vía `Servo.h`, no requiere pin PWM de hardware), V+ → 5V, GND → GND
+  - Servo de la puerta (pieza nativa `wokwi-servo`): señal PWM → pin D9 (vía `Servo.h`, no requiere pin PWM de hardware; **no va en A2** para no chocar con el sensor de proximidad 1), V+ → 5V, GND → GND
+
+  **Conflicto de Timer1 (D9/D10) con `Servo.h`**: en el Uno, `Servo.attach()` reconfigura Timer1 del ATmega328P apenas hay un servo activo, sin importar a qué pin esté atado ese servo (el chip solo tiene un timer disponible para servos, a diferencia del Mega). Esto deja D9/D10 inservibles para `pulseIn()` mientras el servo de la puerta esté activo. Por eso el sensor de proximidad 1 se movió a A2/A3 y el servo pasó a D9 — mantener esta separación si se vuelve a tocar la asignación de pines.
   - Fotocelda: en físico es una LDR de 2 patas (sin polaridad) + una resistencia fija (~10kΩ) armando un divisor de tensión a mano — el nodo entre ambas va a A0, un extremo de la LDR a 5V y un extremo de la resistencia a GND. Wokwi no tiene una pieza de LDR suelta ni simula bien resistencias junto a partes analógicas, así que `diagram.json` la simula con el módulo `wokwi-photoresistor-sensor` (mismo comportamiento eléctrico visto desde AO, pero no es el montaje físico real)
 
   Desactivado temporalmente (comentado en el código, no borrado del todo — ver `config.h`, `main.cpp`, `sensors.cpp`): sensor de presión de cama (potenciómetro en Wokwi) en A0 (choca con la fotocelda — no puede reactivarse sin mover una de las dos a otro pin), luz de alarma de cama en pin 5. No están en `diagram.json` mientras siguen desactivados.

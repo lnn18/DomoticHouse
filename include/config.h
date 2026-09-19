@@ -15,8 +15,16 @@ constexpr uint8_t PIN_BUZZER = 4;
 
 // Sensor ultrasonico 1 (SRF-05, en modo de 4 pines compatible HC-SR04): TRIG emite el
 // pulso, ECHO recibe el eco. El pin OUT/Mode del SRF-05 se deja sin conectar.
-constexpr uint8_t PIN_TRIG_1 = 9;
-constexpr uint8_t PIN_ECHO_1 = 10;
+//
+// NO USA D9/D10 a proposito: la libreria Servo.h (ver PIN_SERVO_PUERTA mas abajo)
+// reconfigura Timer1 del ATmega328P apenas se hace attach() de CUALQUIER servo, sin
+// importar a que pin este atado ese servo -- el Uno solo tiene un timer disponible para
+// servos. Esto deja D9/D10 inservibles para pulseIn() mientras el servo de la puerta este
+// activo (sintoma observado: Sensor 1 en timeout constante, -1cm, con RFID/servo activos).
+// Se mueve el sensor 1 a A2/A3 (pines analogicos usables como digitales, sin relacion con
+// Timer1) y el servo pasa a D9 (ver PIN_SERVO_PUERTA), que ya no le hace falta a nadie mas.
+constexpr uint8_t PIN_TRIG_1 = A2;
+constexpr uint8_t PIN_ECHO_1 = A3;
 
 // Sensor ultrasonico 2 (SRF-05, mismo modo de 4 pines)
 constexpr uint8_t PIN_TRIG_2 = 7;
@@ -110,7 +118,9 @@ constexpr uint8_t PIN_RFID_RST = A5;
 
 // Servo que mueve el pestillo de la puerta. No requiere un pin PWM de hardware:
 // la libreria Servo.h genera la señal por software en cualquier pin digital.
-constexpr uint8_t PIN_SERVO_PUERTA = A2;
+// Va en D9 (antes ocupado por el sensor 1, ver PIN_TRIG_1 arriba): el servo igual reconfigura
+// Timer1 este donde este, asi que D9 no lo perjudica, y libera A2/A3 para el sensor 1.
+constexpr uint8_t PIN_SERVO_PUERTA = 9;
 constexpr uint8_t ANGULO_PUERTA_CERRADA = 0;
 constexpr uint8_t ANGULO_PUERTA_ABIERTA = 90;
 constexpr unsigned long DURACION_PUERTA_ABIERTA_MS = 20000UL; // Tiempo que la puerta queda abierta antes de cerrarse sola
