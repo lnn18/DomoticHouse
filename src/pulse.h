@@ -9,7 +9,7 @@
 //
 //  Como se usa (para la persona):
 //    - Switch en OFF: no mide nada.
-//    - Switch en ON : mide durante 20 segundos, muestra el resultado en la
+//    - Switch en ON : mide durante 10 segundos, muestra el resultado en la
 //                     pantalla y repite mientras el switch siga en ON.
 //    - Si el resultado es muy bajo o muy alto, suena el buzzer.
 //
@@ -26,7 +26,7 @@ void inicializarPulso(uint8_t pinSensor, uint8_t pinSwitch);
 
 // Se llama en cada vuelta del programa y lo mas seguido posible mientras se mide
 // (el sensor necesita leerse cada ~2 milisegundos).
-// Atiende el switch, la medicion de 20 s, la pantalla y la alarma.
+// Atiende el switch, la medicion de 10 s, la pantalla y la alarma.
 // Devuelve true si la alarma de pulso esta activa (el ultimo resultado valido
 // estuvo fuera del rango normal).
 bool actualizarPulso();

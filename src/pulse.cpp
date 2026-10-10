@@ -35,7 +35,7 @@ constexpr uint8_t TAMANO_PROMEDIO_IBI = 10;       // El BPM es el promedio de lo
 
 // --- Estados posibles del modulo ---
 //   APAGADO  : el switch esta en OFF, no se mide
-//   MIDIENDO : se esta midiendo un ciclo de 20 s
+//   MIDIENDO : se esta midiendo un ciclo de 10 s
 //   PAUSA    : pausa de 1 s entre ciclos (los sensores de distancia pueden leer)
 enum EstadoPulso : uint8_t { APAGADO, MIDIENDO, PAUSA };
 EstadoPulso ESTADO = APAGADO;

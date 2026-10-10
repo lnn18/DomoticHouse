@@ -303,7 +303,7 @@ void loop() {
   ALARMA_PANICO_ACTIVA = actualizarAlarmaPanico();
   ALARMA_PULSO_ACTIVA = actualizarPulso();
 
-  // 2) Sensores de distancia. Mientras se mide el pulso (ciclos cortos de 20 s) se
+  // 2) Sensores de distancia. Mientras se mide el pulso (ciclos cortos de 10 s) se
   //    pausan: sus lecturas se demoran hasta ~60 ms y el sensor de pulso necesita
   //    leerse cada ~2 ms. El panico (por interrupcion) y la cama (sin esperas)
   //    siguen activos. Costo asumido: durante esos segundos la alarma de proximidad

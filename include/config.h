@@ -161,7 +161,7 @@ constexpr unsigned int FRECUENCIA_ALARMA_CAMA_HZ = 800;
 // ============================================================================
 //  SENSOR DE PULSO CARDIACO (mide los latidos por minuto, BPM)
 //  Se activa con un switch de 2 posiciones: OFF = no mide; ON = mide en ciclos
-//  de 20 segundos y muestra el resultado en la pantalla LCD al final de cada
+//  de 10 segundos y muestra el resultado en la pantalla LCD al final de cada
 //  ciclo, mientras siga en ON.
 //  Si el resultado sale del rango normal (BPM_MIN_NORMAL a BPM_MAX_NORMAL) suena
 //  el buzzer hasta que un ciclo posterior sea normal o el switch pase a OFF.
@@ -176,7 +176,7 @@ constexpr unsigned int FRECUENCIA_ALARMA_CAMA_HZ = 800;
 constexpr uint8_t PIN_SENSOR_PULSO = A8;   // Cable morado (senal analogica); rojo a 5V, negro a GND
 constexpr uint8_t PIN_SWITCH_PULSO = 12;   // Switch de 2 posiciones a GND: cerrado = ON (igual que el de la cama)
 constexpr unsigned long DEBOUNCE_SWITCH_PULSO_MS = 50UL;      // Anti-rebote del switch: 50 ms
-constexpr unsigned long DURACION_MEDICION_PULSO_MS = 20000UL; // Duracion de cada ciclo de medicion (y cada cuanto se actualiza la pantalla): 20 s
+constexpr unsigned long DURACION_MEDICION_PULSO_MS = 10000UL; // Duracion de cada ciclo de medicion (y cada cuanto se actualiza la pantalla): 10 s
 constexpr unsigned long PAUSA_ENTRE_MEDICIONES_MS = 1000UL;   // Pausa entre ciclos donde los sensores de distancia pueden leer: 1 s
 constexpr uint8_t LATIDOS_MINIMOS_MEDICION = 5;               // Menos latidos que esto = medicion invalida (dedo mal puesto), no se alarma
 constexpr int BPM_MIN_NORMAL = 50;         // Por debajo de esto el pulso es demasiado lento -> alarma
@@ -234,6 +234,6 @@ constexpr unsigned long DEBOUNCE_BOTON_PUERTA_MS = 50UL; // Anti-rebote del boto
 constexpr uint8_t PIN_SERVO_PUERTA = 11;
 constexpr uint8_t ANGULO_PUERTA_CERRADA = 0;   // Angulo del servo con la puerta cerrada (grados)
 constexpr uint8_t ANGULO_PUERTA_ABIERTA = 90;  // Angulo del servo con la puerta abierta (grados)
-constexpr unsigned long DURACION_PUERTA_ABIERTA_MS = 20000UL; // Tiempo que la puerta queda abierta antes de cerrarse sola (20 s)
+constexpr unsigned long DURACION_PUERTA_ABIERTA_MS = 5000UL; // Tiempo que la puerta queda abierta antes de cerrarse sola (5 s)
 
 #endif
