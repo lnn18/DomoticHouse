@@ -1,242 +1,239 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// ============================================================================
+//  CONFIG (configuracion del proyecto)
+//
+//  Que hace este archivo: es la "lista de ajustes" de todo el sistema. Aqui
+//  se dice, en un solo lugar:
+//    - En que pin del Arduino esta conectado cada componente.
+//    - Los valores que se pueden ajustar: distancias, tiempos, tonos...
+//
+//  Por que es util: si algun dia se cambia un cable de lugar o se quiere que
+//  una alarma tarde mas, solo hay que cambiar el numero AQUI, sin tocar el resto
+//  del programa.
+//
+//  Glosario rapido (para quien no sabe de electronica):
+//    - Pin     : cada "patita" del Arduino donde se conecta un cable.
+//    - D2, D3...: pines digitales (solo "encendido" o "apagado").
+//    - A0, A1... : pines analogicos (leen valores de 0 a 1023).
+//    - GND      : tierra, el cable de "retorno" de la electricidad.
+//    - HIGH/LOW : encendido (con corriente) / apagado (sin corriente).
+//    - ms       : milisegundos (1000 ms = 1 segundo).
+//    - cm       : centimetros.
+//    - Hz       : Hertz, el tono de un sonido (mas Hz = mas agudo).
+//    - Debounce / anti-rebote: esperar un instante antes de creerle a un boton,
+//      porque al presionarlo "vibra" y manda varios pulsos seguidos.
+//
+//  Se usa "constexpr" en vez de "#define" porque asi cada valor tiene un tipo
+//  (numero entero, etc.) y el compilador puede detectar errores.
+// ============================================================================
+
 #include <Arduino.h>
 
-// Este archivo reune todas las constantes del proyecto: en que pin esta conectado
-// cada componente, y algunos parametros de comportamiento (umbrales, tiempos). Asi,
-// si algun dia se cambia un cable de lugar, solo hay que tocar este archivo.
-//
-// Se usa "constexpr" en vez de "#define" porque constexpr respeta tipos (uint8_t,
-// int, etc.) y el compilador puede detectar errores que un simple #define no veria.
-
-// Buzzer (altavoz pequeno que suena cuando hay una alerta)
+// ============================================================================
+//  BUZZER (alarma sonora)
+// ============================================================================
+// Buzzer: el pequeno altavoz que suena cuando hay una alerta.
 constexpr uint8_t PIN_BUZZER = 4;
 
-// Sensor ultrasonico 1 (SRF-05, en modo de 4 pines compatible HC-SR04): TRIG emite el
-// pulso, ECHO recibe el eco. El pin OUT/Mode del SRF-05 se deja sin conectar.
-//
-// NO USA D9/D10 a proposito: la libreria Servo.h (ver PIN_SERVO_PUERTA mas abajo)
-// reconfigura Timer1 del ATmega328P apenas se hace attach() de CUALQUIER servo, sin
-// importar a que pin este atado ese servo -- el Uno solo tiene un timer disponible para
-// servos. Esto deja D9/D10 inservibles para pulseIn() mientras el servo de la puerta este
-// activo (sintoma observado: Sensor 1 en timeout constante, -1cm, con RFID/servo activos).
-// Se mueve el sensor 1 a A2/A3 (pines analogicos usables como digitales, sin relacion con
-// Timer1) y el servo pasa a D9 (ver PIN_SERVO_PUERTA), que ya no le hace falta a nadie mas.
+// ============================================================================
+//  SENSORES DE DISTANCIA (ultrasonicos SRF-05)
+//  Cada sensor tiene dos cables de senal:
+//    TRIG = el sensor "grita" (emite un sonido que no escuchamos)
+//    ECHO = el sensor "escucha" el eco que rebota en el objeto
+//  El pin extra OUT/Mode del SRF-05 se deja sin conectar.
+// ============================================================================
+// Nota tecnica (historia): estos pines evitan D9/D10 porque en la placa Uno la
+// libreria del servo los dejaba inservibles. En el Mega ya no pasa, pero se
+// dejaron donde estaban.
 constexpr uint8_t PIN_TRIG_1 = A2;
 constexpr uint8_t PIN_ECHO_1 = A3;
 
-// Sensor ultrasonico 2 (SRF-05, mismo modo de 4 pines)
+// Sensor de distancia 2 (mismo modelo y mismo modo).
 constexpr uint8_t PIN_TRIG_2 = 7;
 constexpr uint8_t PIN_ECHO_2 = 8;
 
-// LED de panico: antes vivia en el registro 74HC595 (Q2), pero ese registro se quito
-// para liberar el bus SPI (D11/D12/D13) que ahora usa el lector RC522.
+// ============================================================================
+//  LEDs DE AVISO
+// ============================================================================
+// LED de panico: se prende cuando alguien presiona el boton de panico.
+// (Control directo; antes vivia en un chip auxiliar que ya se elimino.)
 constexpr uint8_t PIN_LED_PANICO = A1;
 
-// LED de proximidad: canal visual para la alarma de los sensores externos (1 y 2), que
-// hasta ahora solo tenia buzzer (ver iot-elder-care-safety: una alarma no deberia depender
-// de un unico canal). Se enciende/apaga junto con ALERTA_ACTIVA en main.cpp -- mismas
-// condiciones que el buzzer de proximidad (objeto cerca, segun el umbral de cada sensor,
-// ver UMBRAL_DETECCION_1_CM/UMBRAL_DETECCION_2_CM, Y de noche).
-// Va en D10: libre desde que el sensor 1 se movio a A2/A3. Sirve para un LED simple
-// (digitalWrite, sin PWM), asi que no le afecta que Servo.h use Timer1 en D9/D10 --
-// ese conflicto es solo para pulseIn()/analogWrite(), no para digitalWrite() (ver config.h,
-// nota de PIN_TRIG_1, y CLAUDE.md).
+// LED de proximidad: es el "segundo canal" visual de la alarma de proximidad.
+// Se prende bajo las mismas condiciones que el buzzer de proximidad: hay algo
+// dentro de la distancia de alerta de cada sensor Y es de noche.
+// Asi la alarma no depende de un solo aviso (si no se escucha, igual se ve).
 constexpr uint8_t PIN_LED_PROXIMIDAD = 10;
 
-// Distancia (cm) a partir de la cual cada sensor de proximidad considera que "detecto
-// algo". Si el objeto esta a esta distancia o mas cerca, se activa la alerta. Umbrales
-// separados por sensor (antes uno solo, UMBRAL_DETECCION_CM, compartido entre los dos):
-// el sensor 2 (D7/D8) quedo a proposito mas sensible (8cm) que el sensor 1 (A2/A3, 20cm)
-// a pedido, por su ubicacion/uso especifico en el montaje.
+// Distancia de alerta de cada sensor, en centimetros: si un objeto esta a esta
+// distancia o mas cerca, se activa la alerta de proximidad.
+// Cada sensor tiene la suya: el sensor 2 es mas sensible (8 cm) que el 1 (20 cm)
+// por su ubicacion en el montaje.
 constexpr int UMBRAL_DETECCION_1_CM = 20;
 constexpr int UMBRAL_DETECCION_2_CM = 8;
 
-// Tiempo maximo de espera de pulseIn (~515 cm), evita bloqueos largos si no hay eco.
+// Tiempo maximo que el Arduino espera el eco del sensor (en microsegundos).
 // Si el sonido no vuelve en este tiempo, se asume que no hay ningun objeto cerca.
+// (30000 us ~ 5 metros de alcance.)
 constexpr unsigned long TIMEOUT_PULSO_US = 30000UL;
 
-// Intervalo no bloqueante entre lecturas de los sensores (en milisegundos).
-// No hace falta leer los sensores todo el tiempo; cada 1 s es mas que suficiente
-// y deja "aire" al procesador para otras tareas.
+// Cada cuanto leer los sensores de proximidad (en milisegundos).
+// No hace falta leerlos todo el tiempo; una vez por segundo es suficiente y
+// deja tiempo libre al procesador para otras tareas.
 constexpr unsigned long INTERVALO_LECTURA_MS = 1000UL;
 
-// --- Sensor de presencia en el pasillo (3er SRF-05, en modo de 4 pines) ---
-// El pasillo usaba un PIR (deteccion real de movimiento); se cambio a un SRF-05 para
-// reutilizar el mismo modelo de sensor que proximidad (se tenian 3 SRF-05 disponibles,
-// solo se usaban 2). Esto cambia la semantica: ya no es "detecto movimiento", sino
-// "detecto algo a menos de UMBRAL_PASILLO_CM" -- no distingue una persona quieta de un
-// objeto fijo (una pared, un mueble) que quede dentro del rango del sensor.
-// PIN_TRIG_PASILLO NO usa D3 a proposito: D2 y D3 son los unicos pines de interrupcion
-// externa (INT0/INT1) del Uno, y D3 esta reservado para el boton de panico.
-constexpr uint8_t PIN_TRIG_PASILLO = 2;  // Antes usado por el PIR (OUT); ahora TRIG del SRF-05
-constexpr uint8_t PIN_ECHO_PASILLO = 5;  // Con la alarma de cama reactivada, D5 vuelve a ser SOLO de este sensor -- ver PIN_LUZ_ALARMA_CAMA mas abajo (se movio a D9 para no chocar aca)
+// ============================================================================
+//  LUZ DEL PASILLO (3er sensor de distancia + luz)
+//  El sensor mide la distancia: si hay algo cerca, enciende la luz. Ojo: no
+//  distingue una persona quieta de un objeto fijo (una pared, un mueble) que
+//  quede dentro de su rango.
+// ============================================================================
+constexpr uint8_t PIN_TRIG_PASILLO = 2;  // TRIG del sensor del pasillo
+constexpr uint8_t PIN_ECHO_PASILLO = 5;  // ECHO del sensor del pasillo
 constexpr uint8_t PIN_LUZ_PASILLO = 6;   // Controla la luz del pasillo (LED/rele)
 constexpr int UMBRAL_PASILLO_CM = 10;    // Distancia a partir de la cual se considera "hay alguien"
-constexpr unsigned long DURACION_LUZ_PASILLO_MS = 15000UL; // Tiempo que la luz queda encendida tras la ultima deteccion
+constexpr unsigned long DURACION_LUZ_PASILLO_MS = 15000UL; // Tiempo que la luz queda encendida tras la ultima deteccion (15 s)
 
-// --- Sensor de presion en la cama: SIMULADO CON SWITCH (temporal, en lugar del FSR real) ---
-// El sensor de presion (FSR) todavia no esta armado fisicamente. Mientras tanto, se simula
-// la señal "hay presion / no hay presion" con un interruptor simple, igual patron que el
-// boton de panico (INPUT_PULLUP + digitalRead, sin resistencia externa): switch cerrado =
-// "hay alguien en la cama", abierto = "cama vacia". El resto de la logica (7 horas seguidas,
-// tolerancia de ausencia corta) es identica a la pensada para el FSR real.
+// ============================================================================
+//  ALARMA DE CAMA (avisa si la persona lleva demasiado tiempo acostada)
 //
-// PIN_FSR_CAMA NO va en A0 (lo documentado originalmente) porque A0 ya lo usa la fotocelda,
-// y NO va en ningun pin digital 2-13 porque estan todos ocupados por otros modulos. Va en
-// A4, que en el Uno era PIN_RFID_SS. En el Mega el RFID ya no lo usa (su SS es D53, ver mas
-// abajo), asi que A4 es solo de este switch y no hay conflicto al reactivar el acceso.
+//  Por ahora el sensor de presion real (FSR) NO esta armado. Se simula con un
+//  interruptor comun: cerrado = "hay alguien en la cama", abierto = "cama vacia".
+//  El resto de la logica es la misma que tendra el sensor real.
 //
-// LIMITACION CONOCIDA (aplica igual con switch que con FSR real, mismo espiritu que
-// PIN_BOTON_PANICO): con INPUT_PULLUP, un cable cortado o el switch desconectado se lee
-// igual que "cama vacia" (pin en HIGH estable) -- no hay forma de distinguir en firmware
-// "switch sano, sin presionar" de "switch desconectado" sin hardware adicional. Con el FSR
-// real ademas existe el riesgo inverso ya documentado antes (ver historial): una lectura
-// analogica baja por desconexion se confunde con "cama vacia" en silencio. Riesgo pendiente,
-// no resuelto en firmware en ninguno de los dos casos.
-constexpr uint8_t PIN_FSR_CAMA = A4;         // Switch (temporal) o FSR (definitivo) de presion en la cama
-// PIN_LUZ_ALARMA_CAMA NO va en D5 (lo documentado originalmente): D5 ya lo usa
-// PIN_ECHO_PASILLO, y con la alarma de cama reactivada ambos pisarian el mismo pin
-// (uno como INPUT para leer eco, el otro como OUTPUT para la luz -- se reconfigurarian
-// mutuamente cada vez que el otro modulo se ejecuta, corrompiendo la lectura del sensor
-// de pasillo). Va en D9, que en el Uno era PIN_SERVO_PUERTA. En el Mega el servo paso a D11
-// (ver mas abajo), asi que D9 es solo de esta luz y no hay conflicto con el servo.
-constexpr uint8_t PIN_LUZ_ALARMA_CAMA = 9;   // Luz de alarma si se demora en levantarse
-constexpr unsigned long DEBOUNCE_PRESION_CAMA_MS = 50UL; // Antirrebote mecanico del switch (mismo valor que DEBOUNCE_BOTON_PANICO_MS; con el FSR real, un antirrebote mas largo -- ver nota abajo -- es mas apropiado para ruido analogico, no mecanico)
+//  Limitacion conocida: si el cable se corta o el interruptor se desconecta, el
+//  sistema lo interpreta como "cama vacia" (no puede distinguirlo sin hardware
+//  adicional). Es un riesgo pendiente de resolver.
+// ============================================================================
+constexpr uint8_t PIN_FSR_CAMA = A4;         // Interruptor (temporal) o sensor de presion (definitivo) de la cama
+constexpr uint8_t PIN_LUZ_ALARMA_CAMA = 9;   // Luz de alarma si la persona lleva demasiado tiempo en la cama
+// Anti-rebote del interruptor de la cama (50 ms). Con el sensor real FSR se
+// recomienda un valor mayor (~2000 ms) porque ese sensor tiene ruido de lectura.
+constexpr unsigned long DEBOUNCE_PRESION_CAMA_MS = 50UL;
 
-// DEBUG TEMPORAL (prueba de banco): 3 segundos en vez de 60, para poder "reiniciar" la
-// prueba rapido con solo abrir el switch, en vez de esperar 1 minuto real cada vez.
-// IMPORTANTE: restaurar a 60000UL antes de dar el sistema por terminado para uso real --
-// con un valor tan chico, una ausencia breve (ej. alguien se da vuelta en la cama, en el
-// uso real) ya cuenta como "se levanto" y reinicia el conteo de horas, que es exactamente
-// lo que TOLERANCIA_AUSENCIA_CAMA_MS existe para evitar.
+// VALOR DE PRUEBA (restaurar antes de uso real): una ausencia corta de la cama
+// (ej. un giro) no reinicia el conteo; solo se considera que la persona se
+// levanto si falta mas de este tiempo. Hoy 3 segundos para probar rapido.
+// El valor REAL debe ser 60000UL (60 segundos).
 constexpr unsigned long TOLERANCIA_AUSENCIA_CAMA_MS = 3UL * 1000UL; // PRUEBA: 3 segundos (valor real: 60000UL)
 
-// DEBUG TEMPORAL (prueba de banco): 5 segundos en vez de 7 horas, para poder probar la
-// alarma de cama sin esperar el tiempo real. IMPORTANTE: restaurar a
-// "7UL * 60UL * 60UL * 1000UL" (7 horas) antes de dar el sistema por terminado para uso real.
+// VALOR DE PRUEBA (restaurar antes de uso real): tiempo maximo que la persona
+// puede estar acostada antes de que suene la alarma. Hoy 5 segundos para poder
+// probarla sin esperar. El valor REAL debe ser 7 horas: 7UL * 60UL * 60UL * 1000UL.
 constexpr unsigned long TIEMPO_MAX_EN_CAMA_MS = 5UL * 1000UL; // PRUEBA: 5 segundos (valor real: 7UL * 60UL * 60UL * 1000UL)
 //
-// NOTA para cuando se reemplace el switch por el FSR real: volver DEBOUNCE_PRESION_CAMA_MS
-// a un valor mayor (2000UL en el diseño original) -- un FSR analogico tiene ruido de lectura
-// continuo, muy distinto al rebote mecanico de un switch, y necesita mas tiempo de filtrado.
-// Tambien habria que reintroducir UMBRAL_PRESION_CAMA_ADC (ya no aplica con un switch digital
-// simple) y cambiar hayPersonaEnCama() de digitalRead() a analogRead() con ese umbral.
+// Al reemplazar el interruptor por el sensor FSR real habra que: subir
+// DEBOUNCE_PRESION_CAMA_MS (~2000 ms), definir un umbral analogico de presion y
+// cambiar hayPersonaEnCama() para leer con analogRead() en vez de digitalRead().
 
-// --- Fotocelda (LDR): detecta si es de noche, para restringir la luz de pasillo y la ---
-// --- alarma de proximidad a que solo reaccionen en la oscuridad.                     ---
-// Reutiliza A0, que quedo libre al desactivar la alarma de cama. Si se reactiva esa
-// alarma, la fotocelda deberia moverse a otro pin analogico libre (ver CLAUDE.md).
+// ============================================================================
+//  FOTOCELDA (sensor de luz: decide si es de dia o de noche)
+//  Una fotocelda (LDR) cambia su resistencia con la luz. De noche la lectura
+//  SUBE. La luz de pasillo y la alarma de proximidad solo funcionan de noche.
+// ============================================================================
 constexpr uint8_t PIN_FOTOCELDA = A0;
 constexpr int UMBRAL_OSCURIDAD_ADC = 500; // Lectura (0-1023) a partir de la cual se considera "de noche"; ajustar segun el LDR y la resistencia usados
-constexpr unsigned long DEBOUNCE_FOTOCELDA_MS = 2000UL; // Filtra ruido momentaneo de la lectura analogica (ej. una sombra pasajera)
+constexpr unsigned long DEBOUNCE_FOTOCELDA_MS = 2000UL; // Filtra ruido momentaneo de la lectura (ej. una sombra pasajera): 2 s
 
-// --- Boton de panico ---
-// Usa D3 (INT1), el pin de interrupcion que se dejo libre a proposito (ver PIN_LUZ_PASILLO
-// mas arriba). Es la alarma de mayor prioridad: silencia cualquier otra alarma en el buzzer
-// compartido. El boton funciona como interruptor (toggle): un pulso activa la alarma, el
-// siguiente la desactiva; asi no depende de que otro componente la apague.
+// ============================================================================
+//  BOTON DE PANICO (la alarma de MAYOR prioridad del sistema)
+//  Funciona como interruptor: un pulso activa la alarma y el siguiente la
+//  desactiva. Silencia cualquier otra alarma en el buzzer.
+//  Usa el pin D3 porque es uno de los dos pines con "interrupcion" (avisa al
+//  Arduino al instante).
 //
-// LIMITACION CONOCIDA (igual espiritu que PIN_FSR_CAMA): con INPUT_PULLUP, un cable cortado
-// o el boton desconectado se lee igual que "nunca presionado" (el pin queda en HIGH de forma
-// estable). No hay forma de distinguir en firmware "boton sano, sin presionar" de "boton
-// desconectado" sin hardware adicional (ej. resistencia de deteccion de continuidad, o un
-// diseno normalmente cerrado). Riesgo pendiente, no resuelto aqui.
+//  Limitacion conocida: si el cable se corta, el sistema lo interpreta como
+//  "boton sin presionar". No se puede distinguir sin hardware adicional.
+// ============================================================================
 constexpr uint8_t PIN_BOTON_PANICO = 3;
-constexpr unsigned long DEBOUNCE_BOTON_PANICO_MS = 50UL;
+constexpr unsigned long DEBOUNCE_BOTON_PANICO_MS = 50UL; // Anti-rebote: 50 ms
 
-// --- Frecuencias del buzzer, distintas por tipo de alarma para diferenciarlas de oido ---
-// FRECUENCIA_ALARMA_PANICO_HZ es la mas alta y aguda a proposito: debe ser la mas
-// facil de reconocer, ya que indica la emergencia de mayor prioridad.
+// ============================================================================
+//  TONOS DEL BUZZER (uno distinto por tipo de alarma, para reconocerlas de oido)
+//  El de panico es el mas agudo a proposito: es la emergencia mas importante.
+// ============================================================================
 constexpr unsigned int FRECUENCIA_ALARMA_PANICO_HZ = 3000;
 constexpr unsigned int FRECUENCIA_ALARMA_PROXIMIDAD_HZ = 2000;
 constexpr unsigned int FRECUENCIA_ALARMA_CAMA_HZ = 800;
 
-// --- Sensor de pulso cardiaco (PulseSensor / Electronilab SNB004), bajo demanda ---
-// Solo disponible en el Mega (A8 no existe en el Uno). Bajo demanda, controlado por un
-// switch de 2 posiciones en PIN_SWITCH_PULSO: con el switch en OFF no se mide; en ON se mide
-// en ciclos de DURACION_MEDICION_PULSO_MS, mostrando el resultado en la LCD al final de
-// cada ciclo, hasta que se vuelva a OFF. Si el BPM de un ciclo sale de [BPM_MIN_NORMAL,
-// BPM_MAX_NORMAL] suena el buzzer hasta que un ciclo posterior sea normal o el switch
-// pase a OFF. Prioridad en el buzzer: panico > cama > pulso > proximidad (ver
-// actualizarBuzzerCompartido en main.cpp).
-// Durante la medicion main.cpp pausa los ultrasonicos y los logs seriales: bloquean el loop
-// decenas de ms y el sensor necesita muestrearse cada ~2ms. Entre ciclos hay una pausa
-// corta (PAUSA_ENTRE_MEDICIONES_MS) en la que los ultrasonicos si leen.
+// ============================================================================
+//  SENSOR DE PULSO CARDIACO (mide los latidos por minuto, BPM)
+//  Se activa con un switch de 2 posiciones: OFF = no mide; ON = mide en ciclos
+//  de 20 segundos y muestra el resultado en la pantalla LCD al final de cada
+//  ciclo, mientras siga en ON.
+//  Si el resultado sale del rango normal (BPM_MIN_NORMAL a BPM_MAX_NORMAL) suena
+//  el buzzer hasta que un ciclo posterior sea normal o el switch pase a OFF.
+//
+//  Prioridad del buzzer: panico > cama > pulso > proximidad.
+//  Solo funciona en el Arduino Mega (el pin A8 no existe en el Uno).
+//
+//  Mientras se mide, el programa pausa los sensores de distancia y los mensajes
+//  a la computadora, porque lo demorarian y el sensor de pulso necesita leerse
+//  cada ~2 ms. Entre ciclos hay una pausa corta donde si leen.
+// ============================================================================
 constexpr uint8_t PIN_SENSOR_PULSO = A8;   // Cable morado (senal analogica); rojo a 5V, negro a GND
-constexpr uint8_t PIN_SWITCH_PULSO = 12;   // Switch de 2 posiciones a GND, INPUT_PULLUP (igual que el de la cama): cerrado = ON
-constexpr unsigned long DEBOUNCE_SWITCH_PULSO_MS = 50UL;
-constexpr unsigned long DURACION_MEDICION_PULSO_MS = 20000UL; // Duracion de cada ciclo de medicion (y cada cuanto se actualiza la LCD)
-constexpr unsigned long PAUSA_ENTRE_MEDICIONES_MS = 1000UL;   // Ventana entre ciclos donde los ultrasonicos pueden leer
+constexpr uint8_t PIN_SWITCH_PULSO = 12;   // Switch de 2 posiciones a GND: cerrado = ON (igual que el de la cama)
+constexpr unsigned long DEBOUNCE_SWITCH_PULSO_MS = 50UL;      // Anti-rebote del switch: 50 ms
+constexpr unsigned long DURACION_MEDICION_PULSO_MS = 20000UL; // Duracion de cada ciclo de medicion (y cada cuanto se actualiza la pantalla): 20 s
+constexpr unsigned long PAUSA_ENTRE_MEDICIONES_MS = 1000UL;   // Pausa entre ciclos donde los sensores de distancia pueden leer: 1 s
 constexpr uint8_t LATIDOS_MINIMOS_MEDICION = 5;               // Menos latidos que esto = medicion invalida (dedo mal puesto), no se alarma
-constexpr int BPM_MIN_NORMAL = 50;         // Por debajo de esto se considera bradicardia -> alarma
-constexpr int BPM_MAX_NORMAL = 120;        // Por encima de esto se considera taquicardia -> alarma
-constexpr unsigned int FRECUENCIA_ALARMA_PULSO_HZ = 1200; // Distinta de panico (3000), proximidad (2000) y cama (800)
-// DEBUG TEMPORAL (calibracion): imprime la senal cruda (0-1023) cada 20ms durante la
-// medicion y una linea por cada latido detectado. Es mucho texto: dejar en false salvo
-// que haga falta calibrar el sensor (el avance por segundo y el resultado final se
-// imprimen siempre).
+constexpr int BPM_MIN_NORMAL = 50;         // Por debajo de esto el pulso es demasiado lento -> alarma
+constexpr int BPM_MAX_NORMAL = 120;        // Por encima de esto el pulso es demasiado rapido -> alarma
+constexpr unsigned int FRECUENCIA_ALARMA_PULSO_HZ = 1200; // Tono propio: distinto de panico (3000), proximidad (2000) y cama (800)
+// MODO DE CALIBRACION (dejar en false): si se pone en true, imprime en la
+// computadora la senal cruda del sensor cada 20 ms y una linea por latido. Es
+// mucho texto; solo sirve para ajustar el sensor. El avance por segundo y el
+// resultado final se imprimen siempre.
 constexpr bool DEBUG_PULSO_SENAL = false;
 
-// --- Pantalla LCD 16x2 en paralelo, modo de 4 bits (HD44780 sin modulo I2C, 16 pines) ---
-// Pines D4-D7 de la pantalla (los D0-D3 quedan sin conectar), RS y E. RW va a GND (solo se
-// escribe). Se usa D22-D27 del Mega, bloque contiguo libre, y no los pines bajos (D2-D13)
-// que ya ocupa el resto del sistema.
-// Cableado fisico de los 16 pines de la pantalla:
-//   1 VSS -> GND | 2 VDD -> 5V | 3 V0 -> contraste (cursor de un potenciometro de 10k entre
-//   5V y GND) | 4 RS -> PIN_LCD_RS | 5 RW -> GND | 6 E -> PIN_LCD_E | 7-10 D0-D3 -> sin conectar
-//   11 D4 -> PIN_LCD_D4 | 12 D5 -> PIN_LCD_D5 | 13 D6 -> PIN_LCD_D6 | 14 D7 -> PIN_LCD_D7
-//   15 A (luz de fondo +) -> 5V con una resistencia de 220 ohm | 16 K (luz de fondo -) -> GND
+// ============================================================================
+//  PANTALLA LCD 16x2 (16 columnas x 2 filas de texto)
+//  Se conecta en modo "paralelo de 4 bits": usa los pines de datos D4 a D7 de
+//  la pantalla (los D0 a D3 quedan sin conectar), mas RS y E de control.
+//  RW va a GND porque solo se escribe en ella.
+//
+//  Cableado de los 16 pines de la pantalla:
+//    1 VSS -> GND
+//    2 VDD -> 5V
+//    3 V0  -> contraste: cursor (pata central) de un potenciometro de 10k
+//             conectado entre 5V y GND
+//    4 RS  -> PIN_LCD_RS      5 RW -> GND      6 E -> PIN_LCD_E
+//    7 a 10 (D0-D3) -> sin conectar
+//    11 D4-> PIN_LCD_D4      12 D5 -> PIN_LCD_D5
+//    13 D6 -> PIN_LCD_D6      14 D7 -> PIN_LCD_D7
+//    15 A (luz de fondo +) -> 5V con una resistencia de 220 ohm
+//    16 K (luz de fondo -) -> GND
+// ============================================================================
 constexpr uint8_t PIN_LCD_RS = 22;
 constexpr uint8_t PIN_LCD_E = 23;
 constexpr uint8_t PIN_LCD_D4 = 24;
 constexpr uint8_t PIN_LCD_D5 = 25;
 constexpr uint8_t PIN_LCD_D6 = 26;
 constexpr uint8_t PIN_LCD_D7 = 27;
-constexpr uint8_t LCD_COLUMNAS = 16;
-constexpr uint8_t LCD_FILAS = 2;
+constexpr uint8_t LCD_COLUMNAS = 16; // Cantidad de letras por fila
+constexpr uint8_t LCD_FILAS = 2;     // Cantidad de filas
 
-// --- Control de acceso: lector RFID RC522 + servo de la puerta ---
-// ACTIVO en el Mega. (En el Uno estuvo pausado: A4/D9 se reutilizaron para la cama.)
+// ============================================================================
+//  PUERTA (boton de apertura + servomotor del pestillo)
 //
-// El RC522 usa el bus SPI de HARDWARE del Mega, con pines fijos que NO se pueden cambiar:
-//   MOSI = D51 | MISO = D50 | SCK = D52 | SS de hardware = D53 (debe quedar como salida)
-// SS (SDA en la placa) y RST si son configurables por software.
-//
-// ALIMENTACION: el RC522 es de 3.3V. Conectarlo a 5V lo daña. El Mega tiene un pin 3.3V.
-//   RC522:  SDA -> D53 | SCK -> D52 | MOSI -> D51 | MISO -> D50 | IRQ -> sin conectar
-//           GND -> GND | RST -> D49 | 3.3V -> 3.3V del Mega
-constexpr uint8_t PIN_RFID_SS = 53;
-constexpr uint8_t PIN_RFID_RST = 49;
+//  Boton de apertura manual: pulsador entre el pin y GND, pensado para el lado
+//  de ADENTRO. Abre sin pedir autorizacion: si queda accesible desde afuera,
+//  cualquiera puede entrar.
+// ============================================================================
+constexpr uint8_t PIN_BOTON_PUERTA = 28;
+constexpr unsigned long DEBOUNCE_BOTON_PUERTA_MS = 50UL; // Anti-rebote del boton: 50 ms
 
-// UIDs de tarjetas/tags autorizados a abrir la puerta. Cada UID es un arreglo de bytes de
-// tamano fijo (los RFID de 13.56MHz mas comunes -- MIFARE Classic/Ultralight -- usan UID
-// de 4 bytes; si tu tarjeta da un UID de 7 bytes, ajustar LONGITUD_UID_BYTES).
-//
-// COMO OBTENER EL UID REAL: subir el firmware tal cual esta (con la lista vacia, ver
-// CANTIDAD_UIDS_AUTORIZADOS = 0 mas abajo), abrir el monitor serial (pio device monitor,
-// 9600 baudios) y acercar la tarjeta al RC522. La linea "RFID: tarjeta detectada, UID = .."
-// imprime los bytes en hex (ej: "DE AD BE EF") -- copiar esos valores aca, agregar una fila
-// a UIDS_AUTORIZADOS, subir el UID de CANTIDAD_UIDS_AUTORIZADOS, y volver a subir el firmware.
-constexpr uint8_t LONGITUD_UID_BYTES = 4;
-constexpr uint8_t CANTIDAD_UIDS_AUTORIZADOS = 0;
-constexpr uint8_t UIDS_AUTORIZADOS[][LONGITUD_UID_BYTES] = {
-  // Ejemplo (comentado) de como agregar un UID una vez obtenido del monitor serial:
-  // { 0xDE, 0xAD, 0xBE, 0xEF },
-  { 0x00, 0x00, 0x00, 0x00 }, // fila de relleno: necesaria para que el arreglo no quede vacio en C++; CANTIDAD_UIDS_AUTORIZADOS=0 hace que access.cpp la ignore
-};
-
-// Servo que mueve el pestillo de la puerta. Libreria Servo.h: genera la señal por software
-// en cualquier pin digital; en el Mega usa Timer5 (solo afecta al PWM de D44-D46, que no se
-// usan), asi que ya no hay conflicto con pulseIn()/tone() como en el Uno.
-// Cableado: señal (naranja/amarillo) -> D11 | rojo -> 5V | marron/negro -> GND.
-// Un servo SG90 puede pedir picos de ~500mA al moverse: alimentarlo del mismo 5V del Mega
-// por USB puede reiniciar la placa. Lo seguro es una fuente de 5V aparte con GND comun, o
-// al menos un capacitor de 470uF entre 5V y GND cerca del servo.
+// Servo que mueve el pestillo de la puerta.
+// Cableado: senal (cable naranja/amarillo) -> D11 | rojo -> 5V | marron/negro -> GND.
+// Aviso: un servo pequeno puede pedir picos de ~500 mA al moverse. Si se alimenta
+// del 5V del Arduino por USB, la placa puede reiniciarse. Lo seguro es una fuente
+// de 5V aparte con GND comun, o al menos un capacitor de 470 uF entre 5V y GND
+// cerca del servo.
 constexpr uint8_t PIN_SERVO_PUERTA = 11;
-constexpr uint8_t ANGULO_PUERTA_CERRADA = 0;
-constexpr uint8_t ANGULO_PUERTA_ABIERTA = 90;
-constexpr unsigned long DURACION_PUERTA_ABIERTA_MS = 20000UL; // Tiempo que la puerta queda abierta antes de cerrarse sola
+constexpr uint8_t ANGULO_PUERTA_CERRADA = 0;   // Angulo del servo con la puerta cerrada (grados)
+constexpr uint8_t ANGULO_PUERTA_ABIERTA = 90;  // Angulo del servo con la puerta abierta (grados)
+constexpr unsigned long DURACION_PUERTA_ABIERTA_MS = 20000UL; // Tiempo que la puerta queda abierta antes de cerrarse sola (20 s)
 
 #endif

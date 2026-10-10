@@ -1,27 +1,38 @@
 #ifndef ALERTS_H
 #define ALERTS_H
 
+// ============================================================================
+//  ALERTS (alertas)
+//  Que hace este archivo: maneja dos cosas de seguridad:
+//    1) El BUZZER: el pequeno altavoz que suena cuando hay una alarma.
+//    2) El BOTON DE PANICO: un boton que la persona presiona en una emergencia.
+//
+//  Como funciona el boton de panico: funciona como un interruptor. Un pulso
+//  ACTIVA la alarma y el siguiente pulso la DESACTIVA.
+// ============================================================================
+
 #include <Arduino.h>
 
-// Configura el pin del buzzer (llamar una vez en setup()).
+// Prepara el pin del buzzer y lo deja en silencio. Se llama UNA vez al arrancar.
 void inicializarAlerta(uint8_t pinBuzzer);
 
-// Pone el buzzer a sonar a "frecuenciaHz" (0 = silencio).
-// Solo reinicia el tono cuando la frecuencia pedida cambia respecto a la anterior,
-// para no cortar el sonido innecesariamente en cada vuelta del loop.
+// Hace sonar el buzzer a una frecuencia (el tono, medido en Hz: mayor numero =
+// sonido mas agudo). Si se pide 0, el buzzer se calla.
 //
-// El buzzer es un unico recurso compartido: quien decide que frecuencia pedir en
-// cada momento (y con que prioridad entre distintas alarmas) es responsabilidad
-// de quien llama a esta funcion (ver main.cpp), no de este modulo.
+// Importante: el buzzer es UNO SOLO y lo comparten todas las alarmas. Este modulo
+// solo obedece: quien decide que alarma suena primero (la prioridad) es main.cpp.
+// Tambien evita reiniciar el sonido si se pide el mismo tono que ya suena.
 void actualizarBuzzer(uint8_t pinBuzzer, unsigned int frecuenciaHz);
 
-// Configura el pin del boton de panico y su interrupcion externa (llamar una vez en setup()).
-// El pin debe soportar interrupcion externa (D2 o D3 en el Uno).
+// Prepara el boton de panico. Se llama UNA vez al arrancar.
+// El boton usa un pin de "interrupcion": una especie de timbre especial que
+// avisa al Arduino al instante, aunque este ocupado haciendo otra cosa.
 void inicializarBotonPanico(uint8_t pinBoton);
 
-// Debe llamarse en cada vuelta de loop(): resuelve el anti-rebote del pulso detectado por
-// la interrupcion y, si corresponde, alterna el estado de la alarma (toggle: un pulso la
-// activa, el siguiente la desactiva). Devuelve true si la alarma de panico esta activa.
+// Revisa el boton de panico. Se llama en cada vuelta del programa.
+// Filtra los "rebotes" (un boton real vibra y manda varios pulsos seguidos al
+// presionarlo) y alterna la alarma: un pulso la activa, el siguiente la apaga.
+// Devuelve true si la alarma de panico esta activa en este momento.
 bool actualizarAlarmaPanico();
 
 #endif

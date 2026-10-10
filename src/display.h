@@ -1,18 +1,28 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+// ============================================================================
+//  DISPLAY (luces de aviso, LEDs)
+//  Que hace este archivo: maneja los DOS LEDs de aviso del sistema:
+//    - LED de panico: se prende cuando alguien presiona el boton de panico.
+//    - LED de proximidad: se prende cuando algo se acerca a un sensor de noche.
+//
+//  Cada LED es un "segundo canal" de su alarma: ademas del sonido del buzzer, la
+//  persona tambien VE el aviso. Asi, si no escucha, igual se entera.
+//
+//  Nota: la pantalla de texto (LCD) NO esta aqui, esta en lcd.h.
+// ============================================================================
+
 #include <Arduino.h>
 
-// Los LEDs se controlan directo (sin registro de desplazamiento): antes vivian en el
-// 74HC595, pero ese registro se quito para liberar el bus SPI (D11/D12/D13) que ahora
-// usa el lector RC522.
-
-// Configura los pines de los LEDs (llamar una vez en setup()).
+// Prepara los pines de los dos LEDs. Se llama UNA sola vez al arrancar (setup()).
 void inicializarDisplay(uint8_t pinLedPanico, uint8_t pinLedProximidad);
 
-// Enciende o apaga cada LED segun corresponda. El LED de proximidad es el canal visual
-// de esa alarma (ver PIN_LED_PROXIMIDAD en config.h): se enciende con las mismas
-// condiciones que su buzzer, no con el buzzer de panico.
+// Enciende o apaga cada LED segun corresponda:
+//   panicoActivo      -> true = prende el LED de panico, false = lo apaga
+//   proximidadActiva  -> true = prende el LED de proximidad, false = lo apaga
+// El LED de proximidad se prende con las mismas condiciones que el buzzer de
+// proximidad (algo cerca Y es de noche), no con el boton de panico.
 void actualizarLeds(uint8_t pinLedPanico, bool panicoActivo, uint8_t pinLedProximidad, bool proximidadActiva);
 
 #endif

@@ -109,6 +109,13 @@
       "attrs": {}
     },
     {
+      "type": "wokwi-pushbutton",
+      "id": "botonPuerta",
+      "top": 420,
+      "left": 1300,
+      "attrs": { "color": "green" }
+    },
+    {
       "type": "wokwi-servo",
       "id": "servoPuerta",
       "top": 420,
@@ -184,6 +191,9 @@
 
     [ "switchPulso:2", "mega:12", "blue", [ "v0" ] ],
     [ "switchPulso:1", "mega:GND.3", "black", [ "v0" ] ],
+
+    [ "botonPuerta:1.l", "mega:28", "green", [ "v0" ] ],
+    [ "botonPuerta:2.l", "mega:GND.3", "black", [ "v0" ] ],
 
     [ "servoPuerta:PWM", "mega:11", "orange", [ "v0" ] ],
     [ "servoPuerta:V+", "mega:5V", "red", [ "v0" ] ],

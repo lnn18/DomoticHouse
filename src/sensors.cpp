@@ -1,6 +1,10 @@
 #include "sensors.h"
 #include "config.h"
 
+// ----------------------------------------------------------------------------
+//  Sensores ultrasonicos (de distancia)
+// ----------------------------------------------------------------------------
+
 // Deja los pines listos: TRIG como salida (el Arduino "habla") y ECHO como entrada (el Arduino "escucha").
 void inicializarSensor(uint8_t pinTrig, uint8_t pinEcho) {
   pinMode(pinTrig, OUTPUT);
@@ -8,6 +12,7 @@ void inicializarSensor(uint8_t pinTrig, uint8_t pinEcho) {
   digitalWrite(pinTrig, LOW); // Arranca en LOW para asegurar un pulso limpio en la primera medicion
 }
 
+// Mide la distancia en centimetros (devuelve -1 si no pudo medir).
 long medirDistanciaCm(uint8_t pinTrig, uint8_t pinEcho) {
   // Paso 1: enviamos un pulso muy corto (10 microsegundos) por TRIG.
   // Eso hace que el sensor emita el sonido ultrasonico.
@@ -31,6 +36,11 @@ long medirDistanciaCm(uint8_t pinTrig, uint8_t pinEcho) {
   return (long)(duracionUs / 2) / 29.1;
 }
 
+// ----------------------------------------------------------------------------
+//  Estado interno del filtro anti-rebote (variables PRIVADAS de este archivo)
+//  "Anti-rebote" = esperar a que una lectura se mantenga estable un ratito antes
+//  de creerle, para no reaccionar a cambios muy breves o a ruido.
+// ----------------------------------------------------------------------------
 namespace {
 // Estado interno para el anti-rebote del PIR (DESACTIVADO: el pasillo ahora usa un
 // sensor ultrasonico, ver mas abajo).
@@ -38,14 +48,13 @@ namespace {
 // unsigned long ULTIMO_CAMBIO_PIR_MILLIS = 0;
 // bool MOVIMIENTO_ESTABLE = false;
 
-// Mismo patron de anti-rebote, aplicado al switch (temporal) que simula el sensor de presion.
-bool ULTIMO_ESTADO_FSR = false;
-unsigned long ULTIMO_CAMBIO_FSR_MILLIS = 0;
-bool PRESION_ESTABLE = false;
+// Anti-rebote del interruptor (temporal) que simula el sensor de presion de la cama.
+bool ULTIMO_ESTADO_FSR = false;            // ultima lectura "cruda"
+unsigned long ULTIMO_CAMBIO_FSR_MILLIS = 0; // cuando cambio esa lectura
+bool PRESION_ESTABLE = false;              // respuesta ya filtrada
 
-// Mismo patron de anti-rebote, aplicado a la lectura analogica de la fotocelda: evita que
-// la luz de pasillo y la alarma de proximidad parpadeen si la luz ambiente esta justo en
-// el limite del umbral (ej. al amanecer/atardecer).
+// Anti-rebote de la fotocelda: evita que la luz de pasillo y la alarma de proximidad
+// parpadeen si la luz ambiente esta justo en el limite del umbral (ej. al amanecer/atardecer).
 bool ULTIMO_ESTADO_FOTOCELDA = false;
 unsigned long ULTIMO_CAMBIO_FOTOCELDA_MILLIS = 0;
 bool ES_DE_NOCHE_ESTABLE = false;
@@ -70,37 +79,50 @@ bool ES_DE_NOCHE_ESTABLE = false;
 //   return MOVIMIENTO_ESTABLE;
 // }
 
-// Switch (temporal) que simula el sensor de presion de la cama, mientras no este armado el
+// ----------------------------------------------------------------------------
+//  Sensor de la cama (interruptor que simula el sensor de presion real)
+// ----------------------------------------------------------------------------
+
+// Interruptor (temporal) que simula el sensor de presion de la cama, mientras no este armado el
 // FSR real -- ver PIN_FSR_CAMA en config.h. INPUT_PULLUP + digitalRead, mismo patron que el
-// boton de panico: switch cerrado (pin en LOW) = "hay presion" (alguien en la cama).
+// boton de panico: interruptor cerrado (pin en LOW) = "hay presion" (alguien en la cama).
 void inicializarSensorPresionCama(uint8_t pinFsr) {
   pinMode(pinFsr, INPUT_PULLUP);
 }
 
+// Devuelve true si hay una persona en la cama (con la lectura ya filtrada).
 bool hayPersonaEnCama(uint8_t pinFsr) {
-  bool estadoActual = digitalRead(pinFsr) == LOW; // INPUT_PULLUP: switch cerrado = LOW = "hay presion"
+  bool estadoActual = digitalRead(pinFsr) == LOW; // INPUT_PULLUP: interruptor cerrado = LOW = "hay presion"
   unsigned long ahora = millis();
 
-  // El anti-rebote aqui es clave: sin el, un roce o un rebote mecanico del switch que
+  // El anti-rebote aqui es clave: sin el, un roce o un rebote mecanico del interruptor que
   // "suelte" la señal un instante reiniciaria el temporizador de "tiempo en cama" en
   // main.cpp, y la alarma de 7 horas nunca se dispararia (falla silenciosa). Con el FSR
   // real (analogRead + umbral) el mismo razonamiento aplica igual, pero con ruido de
   // lectura analogica en vez de rebote mecanico -- ver nota de DEBOUNCE_PRESION_CAMA_MS
   // en config.h sobre el valor a usar en cada caso.
   if (estadoActual != ULTIMO_ESTADO_FSR) {
+    // La lectura cambio: anotamos cuando, y empezamos a esperar que se estabilice.
     ULTIMO_CAMBIO_FSR_MILLIS = ahora;
     ULTIMO_ESTADO_FSR = estadoActual;
   }
   if (ahora - ULTIMO_CAMBIO_FSR_MILLIS >= DEBOUNCE_PRESION_CAMA_MS) {
+    // Lleva suficiente tiempo igual: ya podemos creerle.
     PRESION_ESTABLE = estadoActual;
   }
   return PRESION_ESTABLE;
 }
 
+// ----------------------------------------------------------------------------
+//  Fotocelda (dia / noche)
+// ----------------------------------------------------------------------------
+
+// Prepara el pin de la fotocelda como entrada.
 void inicializarFotocelda(uint8_t pinFotocelda) {
   pinMode(pinFotocelda, INPUT);
 }
 
+// Devuelve true si es de noche (con la lectura ya filtrada).
 bool esDeNoche(uint8_t pinFotocelda, int umbralAdc) {
   // La fotocelda es una LDR de 2 patas (no un modulo integrado): el divisor de tension se
   // arma a mano con una resistencia fija (~10k) en serie, y este pin lee el punto medio
@@ -113,6 +135,8 @@ bool esDeNoche(uint8_t pinFotocelda, int umbralAdc) {
   bool estadoActual = analogRead(pinFotocelda) >= umbralAdc;
   unsigned long ahora = millis();
 
+  // Mismo patron de anti-rebote que arriba: solo creemos el cambio de "dia a noche"
+  // (o al reves) cuando se mantiene un rato.
   if (estadoActual != ULTIMO_ESTADO_FOTOCELDA) {
     ULTIMO_CAMBIO_FOTOCELDA_MILLIS = ahora;
     ULTIMO_ESTADO_FOTOCELDA = estadoActual;

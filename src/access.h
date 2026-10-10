@@ -1,20 +1,32 @@
 #ifndef ACCESS_H
 #define ACCESS_H
 
+// ============================================================================
+//  ACCESS (puerta)
+//  Que hace este archivo: controla la puerta con un servomotor (un motorcito
+//  que gira a un angulo exacto y mueve el pestillo) y un boton de apertura.
+//
+//  Como funciona: al presionar el boton, el servo gira y abre la puerta. Pasado
+//  un tiempo (ver DURACION_PUERTA_ABIERTA_MS en config.h) la puerta se cierra sola.
+//
+//  Aviso: el boton abre SIN pedir autorizacion. Debe quedar del lado de ADENTRO
+//  de la puerta; si queda al alcance desde afuera, cualquiera podria entrar.
+// ============================================================================
+
 #include <Arduino.h>
 
-// Control de acceso a la puerta: lector RFID RC522 + servo del pestillo.
-//
-// Solo abre la puerta un UID que este en UIDS_AUTORIZADOS (ver config.h). Cualquier otra
-// tarjeta/tag leido correctamente se registra por Serial pero NO abre la puerta.
+// Prepara el servo del pestillo y lo deja en la posicion cerrada.
+// Se llama UNA vez al arrancar. "pinServo" es el pin donde va su cable de senal.
+void inicializarAcceso(uint8_t pinServo);
 
-// Configura el RC522 (SPI + pines SS/RST) y el servo de la puerta (llamar una vez en setup()).
-void inicializarAcceso(uint8_t pinRfidSs, uint8_t pinRfidRst, uint8_t pinServo);
+// Prepara el boton de apertura. Se llama UNA vez al arrancar.
+// El boton se conecta entre el pin y tierra (GND), sin resistencia externa.
+void inicializarBotonPuerta(uint8_t pinBoton);
 
-// Debe llamarse en cada vuelta de loop(). Si leerTarjetas es true, revisa si hay una
-// tarjeta nueva presente y, si esta autorizada, abre la puerta. Con leerTarjetas en false
-// NO toca el bus SPI (la lectura puede bloquear ~25ms), pero igual cierra la puerta sola
-// tras DURACION_PUERTA_ABIERTA_MS (no bloqueante, via millis()): el cierre nunca se pausa.
-void actualizarAcceso(bool leerTarjetas);
+// Se llama en cada vuelta del programa. Hace dos cosas:
+//   1) Mira si presionaron el boton (filtrando rebotes) y, si es asi, abre la puerta.
+//   2) Cierra la puerta sola cuando termina su tiempo abierta.
+// No usa pausas: el programa sigue atendiendo todo lo demas mientras tanto.
+void actualizarAcceso();
 
 #endif

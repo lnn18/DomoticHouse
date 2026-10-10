@@ -14,7 +14,7 @@ Estado actual: el firmware ([src/main.cpp](src/main.cpp), modularizado en `senso
 - **Fotocelda (LDR)**: en A0, decide si "es de noche" (con anti-rebote de 2s) y condiciona tanto la luz de pasillo como la alarma de proximidad.
 - **Alarma de cama**: ACTIVA, simulada temporalmente con un switch digital (`INPUT_PULLUP` + `digitalRead`, mismo patrón que el botón de pánico) en vez del sensor de presión (FSR) real, que todavía no está armado físicamente. Switch cerrado = "hay alguien en la cama". Si la persona lleva más de 7 horas seguidas acostada (`TIEMPO_MAX_EN_CAMA_MS`), enciende una luz de alarma (D5) y suena el buzzer con un tono distinto al de proximidad (800Hz). Una ausencia corta (<60s, `TOLERANCIA_AUSENCIA_CAMA_MS`, ej. un giro en la cama) no reinicia el conteo. **Al reemplazar el switch por el FSR real**: subir `DEBOUNCE_PRESION_CAMA_MS` (hoy 50ms, antirrebote mecánico) a un valor mayor (~2000ms, para ruido de lectura analógica), reintroducir un umbral ADC, y cambiar `hayPersonaEnCama()` en `sensors.cpp` de `digitalRead()` a `analogRead()` con ese umbral — ver comentarios en `config.h`.
 - **Botón de pánico**: interrupción en D3 (INT1), tipo interruptor (un pulso activa la alarma, el siguiente la desactiva). Es la alarma de mayor prioridad del sistema: silencia cualquier otra en el buzzer compartido y enciende un LED dedicado en A1 (control directo, ya no vía registro de desplazamiento). No depende de la fotocelda — funciona a cualquier hora.
-- **Control de acceso (puerta)**: PAUSADO TEMPORALMENTE (comentado en `main.cpp`, no borrado — `access.cpp`/`access.h` siguen intactos). El lector RFID RC522 tiene un problema de hardware: el chip responde bien por SPI (`VersionReg` válido) pero la antena no irradia campo RF (confirmado con `TxControlReg` y dos módulos distintos), así que nunca detecta tarjetas. Mientras se resuelve (o se reemplaza el módulo), A4 (antes `PIN_RFID_SS`) se reutilizó para el switch de la alarma de cama. Si el RFID se reactiva, ese switch necesita otro pin antes de descomentar `inicializarAcceso()`/`actualizarAcceso()` en `main.cpp`.
+- **Puerta**: un servo (D11) mueve el pestillo y se abre con un botón de apertura manual en D28 (`INPUT_PULLUP` a GND, con anti-rebote), pensado para el lado de adentro. Se cierra solo a los 20 s (`DURACION_PUERTA_ABIERTA_MS`). Abre sin autorización: si el botón queda accesible desde afuera, cualquiera puede entrar. Control de acceso por tarjeta RFID: **descartado** (tres módulos RC522 no detectaron nunca una tarjeta válida; ver historial).
 
 El buzzer es un recurso compartido entre las distintas alarmas; `main.cpp` arbitra la prioridad (pánico > cama > proximidad) antes de pedir una única frecuencia a `actualizarBuzzer()`, una vez por vuelta de `loop()`. El registro 74HC595 que antes controlaba los LEDs se eliminó por completo.
 
@@ -54,7 +54,7 @@ El proyecto se simula en Wokwi (extensión de VS Code o wokwi.com):
   **Conflicto de Timer1 (D9/D10) con `Servo.h`**: en el Uno, `Servo.attach()` reconfigura Timer1 del ATmega328P apenas hay un servo activo, sin importar a qué pin esté atado ese servo (el chip solo tiene un timer disponible para servos, a diferencia del Mega). Esto deja D9/D10 inservibles para `pulseIn()` y `analogWrite()` mientras el servo de la puerta esté activo — pero no afecta `digitalWrite()` (por eso el LED de proximidad puede usar D10 con seguridad).
   - Fotocelda: en físico es una LDR de 2 patas (sin polaridad) + una resistencia fija (~10kΩ) armando un divisor de tensión a mano — el nodo entre ambas va a A0, un extremo de la LDR a 5V y un extremo de la resistencia a GND. Wokwi no tiene una pieza de LDR suelta ni simula bien resistencias junto a partes analógicas, así que `diagram.json` la simula con el módulo `wokwi-photoresistor-sensor` (mismo comportamiento eléctrico visto desde AO, pero no es el montaje físico real)
 
-  Pausado temporalmente (comentado en `main.cpp`, no borrado — `access.cpp`/`access.h` intactos): lector RFID RC522 (bus SPI de hardware D11/D12/D13, SDA/SS en A4, RST en A5) y servo de la puerta (D9), por un problema de hardware de antena en el RC522 (ver arriba). No están en `diagram.json` mientras siguen pausados — A4 lo usa ahora el switch de la alarma de cama.
+  Puerta: servo → pin 11 (`wokwi-servo`, PWM); botón de apertura (`wokwi-pushbutton`) → pin 28, el otro terminal a GND.
 
 Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 
@@ -89,7 +89,7 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - [x] Control de iluminación — on/off simple con el sensor de pasillo (SRF-05); falta el dimmer PWM
 - [ ] Display LCD 16x2 I2C con info de estado
 - [ ] Alarmas de medicamentos (RTC DS3231 + buzzer)
-- [~] Control de acceso a la puerta (lector RFID RC522 + servo) — PAUSADO TEMPORALMENTE (comentado en `main.cpp`, no borrado): la validación de UIDs autorizados ya está implementada (`access.cpp`), pero el módulo RC522 tiene un problema de hardware de antena (no irradia campo RF pese a que el chip responde bien por SPI, confirmado con 2 módulos distintos) y nunca detecta tarjetas. A4 (antes SS del RFID) se reutilizó para el switch de la alarma de cama mientras tanto. No estaba en el roadmap original, se agregó a pedido.
+- [x] Puerta con servo y botón de apertura manual — el control por tarjeta RFID se descartó (ningún módulo RC522 detectó tarjetas). No estaba en el roadmap original, se agregó a pedido.
 
 ### Conectividad
 - [ ] ESP8266 en modo AT para MQTT o HTTP hacia broker/dashboard
@@ -108,7 +108,7 @@ Si se cambia un pin en el código, actualizar `diagram.json` (y viceversa).
 - [src/alerts.h](src/alerts.h) / [src/alerts.cpp](src/alerts.cpp) — control del buzzer compartido (`actualizarBuzzer(pin, frecuenciaHz)`) y del botón de pánico (interrupción + anti-rebote + toggle)
 - [src/display.h](src/display.h) / [src/display.cpp](src/display.cpp) — control directo del LED de pánico y del LED de proximidad (`digitalWrite`, ya no vía 74HC595)
 - [src/lighting.h](src/lighting.h) / [src/lighting.cpp](src/lighting.cpp) — encender/apagar la luz de pasillo
-- [src/access.h](src/access.h) / [src/access.cpp](src/access.cpp) — control de acceso a la puerta: lector RFID RC522 (librería `MFRC522`) + servo del pestillo (librería `Servo`), no bloqueante
+- [src/access.h](src/access.h) / [src/access.cpp](src/access.cpp) — puerta: servo del pestillo (librería `Servo`) + botón de apertura manual con anti-rebote, no bloqueante
 - [include/config.h](include/config.h) — constantes de pines y parámetros (umbrales, timeouts, tiempos de debounce)
 - [platformio.ini](platformio.ini) — único entorno `uno` (plataforma atmelavr, framework Arduino)
 - [diagram.json](diagram.json) — circuito de Wokwi
