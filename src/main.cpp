@@ -5,6 +5,8 @@
 #include "display.h"   // Funcion para controlar el LED de panico
 #include "lighting.h"  // Funciones para controlar la luz del pasillo
 #include "access.h"    // Control de acceso a la puerta: RC522 + servo
+#include "lcd.h"       // Pantalla LCD 16x2 I2C
+#include "pulse.h"     // Sensor de pulso cardiaco bajo demanda (switch ON/OFF + LCD + alarma por BPM fuera de rango)
 
 // Guarda en que momento (milisegundos desde que arranco el Arduino) se leyeron
 // los sensores de proximidad por ultima vez. Junto con millis() en loop(), permite
@@ -42,6 +44,10 @@ bool ALARMA_CAMA_ACTIVA = false;
 // Boton de panico: es la alarma de mayor prioridad de todo el sistema.
 bool ALARMA_PANICO_ACTIVA = false;
 
+// Pulso cardiaco: true si la ultima medicion salio de [BPM_MIN_NORMAL, BPM_MAX_NORMAL] y
+// todavia no se reconocio con el boton.
+bool ALARMA_PULSO_ACTIVA = false;
+
 // setup() se ejecuta una sola vez, apenas el Arduino arranca o se reinicia.
 // Aqui se prepara todo lo necesario antes de empezar a repetir loop().
 void setup() {
@@ -70,12 +76,11 @@ void setup() {
 
   inicializarBotonPanico(PIN_BOTON_PANICO);
 
-  // RFID/servo PAUSADO TEMPORALMENTE (no borrado, ver access.cpp/access.h): el modulo RC522
-  // tiene un problema de hardware (antena no irradia campo RF pese a que el chip responde
-  // bien por SPI, ver diagnostico en el historial del proyecto). Se libera A4 (antes
-  // PIN_RFID_SS) para el switch de cama (PIN_FSR_CAMA); si el RFID se reactiva, ese switch
-  // necesita otro pin antes de descomentar esta linea.
-  // inicializarAcceso(PIN_RFID_SS, PIN_RFID_RST, PIN_SERVO_PUERTA);
+  inicializarLcd();
+  inicializarPulso(PIN_SENSOR_PULSO, PIN_SWITCH_PULSO);
+
+  // Control de acceso: RFID RC522 (SPI hardware del Mega) + servo de la puerta.
+  inicializarAcceso(PIN_RFID_SS, PIN_RFID_RST, PIN_SERVO_PUERTA);
 }
 
 // Lee los 2 sensores ultrasonicos de proximidad y actualiza ALERTA_ACTIVA. Se llama cada
@@ -163,16 +168,18 @@ void actualizarLedsCompartidos() {
   actualizarLeds(PIN_LED_PANICO, ALARMA_PANICO_ACTIVA, PIN_LED_PROXIMIDAD, ALERTA_ACTIVA);
 }
 
-// El buzzer es un recurso compartido: panico > cama > proximidad. Panico tiene la maxima
-// prioridad (emergencia inmediata); cama va antes que proximidad porque una inmovilidad
-// prolongada es una condicion mas grave y sostenida que un objeto pasajero cerca de un
-// sensor. Se decide una sola frecuencia por vuelta de loop() antes de pedirla.
+// El buzzer es un recurso compartido: panico > cama > pulso > proximidad. Panico tiene la
+// maxima prioridad (emergencia inmediata); cama y pulso fuera de rango son condiciones de
+// salud sostenidas y van antes que proximidad, un objeto pasajero cerca de un sensor.
+// Se decide una sola frecuencia por vuelta de loop() antes de pedirla.
 void actualizarBuzzerCompartido() {
   unsigned int frecuenciaBuzzer = 0;
   if (ALARMA_PANICO_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_PANICO_HZ;
   } else if (ALARMA_CAMA_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_CAMA_HZ;
+  } else if (ALARMA_PULSO_ACTIVA) {
+    frecuenciaBuzzer = FRECUENCIA_ALARMA_PULSO_HZ;
   } else if (ALERTA_ACTIVA) {
     frecuenciaBuzzer = FRECUENCIA_ALARMA_PROXIMIDAD_HZ;
   }
@@ -220,13 +227,27 @@ void loop() {
   bool esDeNocheAhora = esDeNoche(PIN_FOTOCELDA, UMBRAL_OSCURIDAD_ADC);
 
   ALARMA_PANICO_ACTIVA = actualizarAlarmaPanico();
-  actualizarProximidad(ahora, esDeNocheAhora);
-  actualizarLuzPasillo(ahora, esDeNocheAhora);
+  ALARMA_PULSO_ACTIVA = actualizarPulso();
+
+  // Mientras se mide el pulso (ventana corta, ver DURACION_MEDICION_PULSO_MS) se pausan los
+  // ultrasonicos y los logs seriales: pulseIn() bloquea hasta ~60ms y Serial.print() a 9600
+  // baudios otro tanto, y el sensor de pulso necesita muestrearse cada ~2ms. Panico (por
+  // interrupcion) y cama (sin bloqueo) siguen activos. Costo asumido: la alarma de proximidad
+  // y la luz de pasillo no reaccionan durante esos segundos.
+  if (!midiendoPulso()) {
+    actualizarProximidad(ahora, esDeNocheAhora);
+    actualizarLuzPasillo(ahora, esDeNocheAhora);
+  }
   actualizarAlarmaCama(ahora);
-  // actualizarAcceso(); // RFID/servo pausado temporalmente -- ver nota en setup()
+  // Durante la medicion de pulso solo se pausa la LECTURA de tarjetas (PICC_RequestA espera
+  // hasta ~25ms por vuelta y rompe el muestreo cada 2ms); el cierre automatico de la
+  // puerta sigue corriendo siempre, para que nunca quede abierta de mas.
+  actualizarAcceso(!midiendoPulso());
 
   actualizarLedsCompartidos();
   actualizarBuzzerCompartido();
 
-  imprimirLogsDebug(esDeNocheAhora); // DEBUG TEMPORAL
+  if (!midiendoPulso()) {
+    imprimirLogsDebug(esDeNocheAhora); // DEBUG TEMPORAL
+  }
 }

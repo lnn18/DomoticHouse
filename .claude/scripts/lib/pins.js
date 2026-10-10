@@ -16,7 +16,7 @@ function extractDiagramPins(diagramJson) {
     if (Array.isArray(node)) {
       node.forEach(walk);
     } else if (typeof node === 'string') {
-      const m = node.match(/^uno:(\d+)$/);
+      const m = node.match(/^(?:uno|mega):(\d+)$/);
       if (m) pins.add(Number(m[1]));
     }
   };
@@ -26,7 +26,7 @@ function extractDiagramPins(diagramJson) {
 
 function extractCodePins(sourceText) {
   const pins = new Map();
-  const declRegex = /\b(?:int|const\s+int|constexpr\s+int|uint8_t|byte)\s+(\w*[Pp]in\w*)\s*=\s*(\d+)\s*;/g;
+  const declRegex = /\b(?:int|const\s+int|constexpr\s+int|uint8_t|byte)\s+(\w*[Pp]in\w*)\s*=\s*(\d+)\s*;/gi;
   const defineRegex = /#define\s+(\w*PIN\w*)\s+(\d+)/gi;
   let match;
   while ((match = declRegex.exec(sourceText)) !== null) {
@@ -88,7 +88,7 @@ function checkPinConsistency(root) {
 
   const enDiagramaNoEnCodigo = [...diagramPins]
     .filter((p) => !codePinNumbers.has(p))
-    .map((p) => `uno:${p}`);
+    .map((p) => `mega:${p}`);
 
   return {
     ok: enCodigoNoEnDiagrama.length === 0 && enDiagramaNoEnCodigo.length === 0,

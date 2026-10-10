@@ -61,6 +61,9 @@ void inicializarAcceso(uint8_t pinRfidSs, uint8_t pinRfidRst, uint8_t pinServo) 
 
   SPI.begin();
   lectorRfid.PCD_Init();
+  // Ganancia de recepcion por defecto (33dB). Probado al maximo (48dB): el ruido de fondo
+  // se interpreta como respuesta corrupta y PICC_RequestA() devuelve "Error in
+  // communication" en cada intento, sin tarjeta, asi que no sirve para este montaje.
 
   // DEBUG TEMPORAL: valida el cableado del RC522 (SPI, VCC/GND, SS/RST) SIN necesitar
   // ninguna tarjeta cerca. PCD_ReadRegister(VersionReg) lee un registro de solo lectura
@@ -102,10 +105,14 @@ void inicializarAcceso(uint8_t pinRfidSs, uint8_t pinRfidRst, uint8_t pinServo) 
   cerrarPuerta();
 }
 
-void actualizarAcceso() {
+void actualizarAcceso(bool leerTarjetas) {
   // Si la puerta esta abierta, se cierra sola pasado el tiempo, sin bloquear el loop.
   if (puertaAbierta && (millis() - momentoAperturaMillis >= DURACION_PUERTA_ABIERTA_MS)) {
     cerrarPuerta();
+  }
+
+  if (!leerTarjetas) {
+    return;
   }
 
   // DEBUG TEMPORAL (diagnostico deteccion de tarjeta): PICC_IsNewCardPresent() colapsa el
@@ -139,6 +146,14 @@ void actualizarAcceso() {
     ultimoLogIntentoMillis = ahoraIntento;
     Serial.print(F("RFID: PICC_RequestA() = "));
     Serial.println(lectorRfid.GetStatusCodeName(statusRequestA));
+  }
+
+  // DEBUG TEMPORAL: confirma que el sondeo sigue corriendo cuando no hay tarjeta (el caso
+  // TIMEOUT arriba se omite a proposito). Una linea cada 3s.
+  static unsigned long ultimoLatidoRfidMillis = 0;
+  if (statusRequestA == MFRC522::STATUS_TIMEOUT && ahoraIntento - ultimoLatidoRfidMillis >= 3000UL) {
+    ultimoLatidoRfidMillis = ahoraIntento;
+    Serial.println(F("RFID: buscando tarjeta... (sin respuesta)"));
   }
 
   bool hayTarjetaNueva = (statusRequestA == MFRC522::STATUS_OK || statusRequestA == MFRC522::STATUS_COLLISION);

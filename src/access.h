@@ -11,9 +11,10 @@
 // Configura el RC522 (SPI + pines SS/RST) y el servo de la puerta (llamar una vez en setup()).
 void inicializarAcceso(uint8_t pinRfidSs, uint8_t pinRfidRst, uint8_t pinServo);
 
-// Debe llamarse en cada vuelta de loop(). Revisa si hay una tarjeta nueva presente:
-// si la hay, abre la puerta. Tambien se encarga de cerrarla sola tras
-// DURACION_PUERTA_ABIERTA_MS (no bloqueante, via millis()).
-void actualizarAcceso();
+// Debe llamarse en cada vuelta de loop(). Si leerTarjetas es true, revisa si hay una
+// tarjeta nueva presente y, si esta autorizada, abre la puerta. Con leerTarjetas en false
+// NO toca el bus SPI (la lectura puede bloquear ~25ms), pero igual cierra la puerta sola
+// tras DURACION_PUERTA_ABIERTA_MS (no bloqueante, via millis()): el cierre nunca se pausa.
+void actualizarAcceso(bool leerTarjetas);
 
 #endif
