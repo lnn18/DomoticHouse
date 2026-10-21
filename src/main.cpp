@@ -112,6 +112,7 @@ void setup() {
   inicializarBotonPanico(PIN_BOTON_PANICO); // Boton de emergencia
 
   inicializarLcd();                                            // Pantalla de texto
+  delay(2000); // PRUEBA DE ARRANQUE (DEBUG TEMPORAL): deja ver el mensaje de la LCD antes de que el pulso lo reemplace. Quitar al terminar.
   inicializarPulso(PIN_SENSOR_PULSO, PIN_SWITCH_PULSO);        // Sensor de pulso + su switch
 
   // Puerta: servo del pestillo + boton de apertura manual.

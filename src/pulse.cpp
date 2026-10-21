@@ -195,13 +195,13 @@ void dibujarFilaResultado() {
   char linea[17];
   switch (ULTIMO_RESULTADO) {
     case NORMAL:
-      snprintf(linea, sizeof(linea), "BPM:%3d NORMAL", ULTIMO_BPM_MOSTRADO);
+      snprintf(linea, sizeof(linea), "%3dBPM NORMAL", ULTIMO_BPM_MOSTRADO);
       break;
     case BAJO:
-      snprintf(linea, sizeof(linea), "BPM:%3d BAJO!!", ULTIMO_BPM_MOSTRADO);
+      snprintf(linea, sizeof(linea), "%3dBPM BRADICARD", ULTIMO_BPM_MOSTRADO); // bradicardia (<60)
       break;
     case ALTO:
-      snprintf(linea, sizeof(linea), "BPM:%3d ALTO!!", ULTIMO_BPM_MOSTRADO);
+      snprintf(linea, sizeof(linea), "%3dBPM TAQUICARD", ULTIMO_BPM_MOSTRADO); // taquicardia (>100)
       break;
     case INVALIDO:
       snprintf(linea, sizeof(linea), "Sin lectura dedo");
@@ -243,6 +243,16 @@ void terminarCiclo(unsigned long ahora) {
     Serial.print(F(", minimo "));
     Serial.print(LATIDOS_MINIMOS_MEDICION);
     Serial.println(F("). Revisa la posicion del dedo."));
+  } else if (BPM_ACTUAL > BPM_MAX_VALIDO) {
+    // Un corazon no late a mas de ~200 BPM en reposo: lo mas probable es que el
+    // sensor haya contado latidos de mas por ruido (dedo que se mueve, mucha luz).
+    // Igual que arriba, no se muestra como un valor real ni apaga una alarma activa.
+    ULTIMO_RESULTADO = INVALIDO;
+    Serial.print(F("MEDICION INVALIDA (BPM "));
+    Serial.print(BPM_ACTUAL);
+    Serial.print(F(" supera el maximo creible de "));
+    Serial.print(BPM_MAX_VALIDO);
+    Serial.println(F("). Ruido del sensor: manten el dedo quieto."));
   } else {
     ULTIMO_BPM_MOSTRADO = BPM_ACTUAL;
     Serial.print(F("BPM: "));
@@ -257,11 +267,11 @@ void terminarCiclo(unsigned long ahora) {
     if (BPM_ACTUAL < BPM_MIN_NORMAL) {
       ULTIMO_RESULTADO = BAJO;
       ALARMA_PULSO_ACTIVA_INTERNA = true;
-      Serial.println(F("ESTADO: BAJO -> ALARMA"));
+      Serial.println(F("ESTADO: BRADICARDIA -> ALARMA"));
     } else if (BPM_ACTUAL > BPM_MAX_NORMAL) {
       ULTIMO_RESULTADO = ALTO;
       ALARMA_PULSO_ACTIVA_INTERNA = true;
-      Serial.println(F("ESTADO: ALTO -> ALARMA"));
+      Serial.println(F("ESTADO: TAQUICARDIA -> ALARMA"));
     } else {
       ULTIMO_RESULTADO = NORMAL;
       ALARMA_PULSO_ACTIVA_INTERNA = false; // Un resultado normal apaga la alarma

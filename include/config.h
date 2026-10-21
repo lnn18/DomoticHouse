@@ -179,8 +179,9 @@ constexpr unsigned long DEBOUNCE_SWITCH_PULSO_MS = 50UL;      // Anti-rebote del
 constexpr unsigned long DURACION_MEDICION_PULSO_MS = 10000UL; // Duracion de cada ciclo de medicion (y cada cuanto se actualiza la pantalla): 10 s
 constexpr unsigned long PAUSA_ENTRE_MEDICIONES_MS = 1000UL;   // Pausa entre ciclos donde los sensores de distancia pueden leer: 1 s
 constexpr uint8_t LATIDOS_MINIMOS_MEDICION = 5;               // Menos latidos que esto = medicion invalida (dedo mal puesto), no se alarma
-constexpr int BPM_MIN_NORMAL = 50;         // Por debajo de esto el pulso es demasiado lento -> alarma
-constexpr int BPM_MAX_NORMAL = 120;        // Por encima de esto el pulso es demasiado rapido -> alarma
+constexpr int BPM_MIN_NORMAL = 60;         // Por debajo de esto hay BRADICARDIA (pulso demasiado lento) -> alarma
+constexpr int BPM_MAX_NORMAL = 100;        // Por encima de esto hay TAQUICARDIA (pulso demasiado rapido) -> alarma
+constexpr int BPM_MAX_VALIDO = 200;        // Por encima de esto la lectura es ruido del sensor (se cuentan latidos de mas), no un pulso real: se descarta como invalida
 constexpr unsigned int FRECUENCIA_ALARMA_PULSO_HZ = 1200; // Tono propio: distinto de panico (3000), proximidad (2000) y cama (800)
 // MODO DE CALIBRACION (dejar en false): si se pone en true, imprime en la
 // computadora la senal cruda del sensor cada 20 ms y una linea por latido. Es

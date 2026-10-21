@@ -24,6 +24,26 @@ void inicializarLcd() {
   for (uint8_t f = 0; f < LCD_FILAS; f++) {
     CACHE_FILAS[f][0] = '\0';
   }
+
+  // PRUEBA DE ARRANQUE (DEBUG TEMPORAL): mensaje fijo para comprobar la pantalla sin
+  // depender del sensor de pulso. La LCD es solo de escritura (RW a GND), asi que el
+  // Arduino NO puede saber si la pantalla realmente lo recibio: hay que verlo a ojo.
+  lcdLinea(0, "Casa IoT");
+  lcdLinea(1, "LCD OK?");
+  Serial.println(F("LCD: mensaje de prueba enviado ('Casa IoT' / 'LCD OK?')"));
+  Serial.print(F("LCD: pines RS="));
+  Serial.print(PIN_LCD_RS);
+  Serial.print(F(" E="));
+  Serial.print(PIN_LCD_E);
+  Serial.print(F(" D4="));
+  Serial.print(PIN_LCD_D4);
+  Serial.print(F(" D5="));
+  Serial.print(PIN_LCD_D5);
+  Serial.print(F(" D6="));
+  Serial.print(PIN_LCD_D6);
+  Serial.print(F(" D7="));
+  Serial.println(PIN_LCD_D7);
+  Serial.println(F("LCD: si ves 'Casa IoT' = cableado OK; cuadritos fijos = revisa RS/E/D4-D7/RW; nada = contraste"));
 }
 
 // Escribe un texto en una fila (explicacion completa en lcd.h).
